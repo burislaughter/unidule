@@ -8,6 +8,7 @@ import Typography from "@mui/material/Typography";
 import { Link } from "@mui/material";
 import styled from "@emotion/styled";
 import { format } from "date-fns";
+import "./MediaCard.css";
 
 type Props = {
   imgUrl: string;
@@ -37,7 +38,7 @@ export const MediaCard = ({
   let startDateTimeStr = "";
   let startDateTimeStateStr = "";
 
-  // startDateTimeStr = format(new Date(startDateTime), "yyyy/MM/dd HH:mm");
+  startDateTimeStr = format(new Date(startDateTime), "yyyy/MM/dd HH:mm");
 
   if (status == "upcoming") {
     // 配信予定
@@ -52,17 +53,12 @@ export const MediaCard = ({
   }
 
   return (
-    <Card sx={{ maxWidth: 240 }}>
+    <Card sx={{ maxWidth: 240 }} className={(status == "live" ? "Now-border" : "") + " Card-parent"}>
       <Link target="_brank" href={"https://www.youtube.com/watch?v=" + videoId}>
         <CardMedia sx={{ height: 140 }} image={imgUrl} />
       </Link>
       <CardContentEx>
-        <Typography
-          variant="body2"
-          gutterBottom
-          component="div"
-          sx={{ fontWeight: "bold" }}
-        >
+        <Typography variant="body2" gutterBottom component="div" sx={{ fontWeight: "bold" }}>
           {title}
         </Typography>
         <Typography variant="body2" color="text.secondary">
@@ -74,6 +70,8 @@ export const MediaCard = ({
             {startDateTimeStr}に{startDateTimeStateStr}
           </Typography>
         )}
+
+        {status == "live" && <Typography className="Now-icon">LIVE!</Typography>}
       </CardContentEx>
     </Card>
   );
