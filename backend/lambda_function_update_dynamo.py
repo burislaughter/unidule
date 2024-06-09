@@ -5,58 +5,13 @@ import boto3
 from boto3.dynamodb.conditions import Key, Attr
 import json
 from decimal import Decimal
+from util import owner_to_cid, owner_to_pid
 import youtubeAPI
 from googleapiclient.discovery import build
-
-channelParams = [
-    ('maru','UCmB1E78Kdgd9z6hN3ONRKow','UUmB1E78Kdgd9z6hN3ONRKow',),
-    ('nagisa','UCe5mbpYA9Yym4lZTdj06G6Q','UUe5mbpYA9Yym4lZTdj06G6Q')
-]
-
-
+import pandas as pd
 
 print('Loading function')
 dynamodb = boto3.resource('dynamodb')
-
-
-# バケット名,オブジェクト名
-BUCKET_NAME = 'unidule-input'
-OBJECT_KEY_NAME = 'maru_v_list.json'
-
-TABLE_NAME = 'channel_video_list'
-
-def respond(err, res=None):
-    return {
-        'statusCode': '400' if err else '200',
-        'body': err.message if err else json.dumps(res),
-        'headers': {
-            'Content-Type': 'application/json',
-        },
-    }
-
-
-def convert_json_dict(json_file_name):
-   with open(json_file_name) as json_file:
-       d = json.load(json_file, parse_float=decimal.Decimal)
-
-   return d
-
-
-# Partition Key（SerialNumber）での絞込検索
-def query_SerialNumber(table, videoId):
-  response = table.query(
-    KeyConditionExpression=Key('id').eq(videoId)
-  )
-  return response['Items']
-
-# Partition Key + Sort Key（SerialNumber + BuildingId）での絞込検索
-def query_SerialNumber_BuildingId(table, channel, publishedAt):
-  response = table.query(
-    KeyConditionExpression=
-      Key('channel').eq(channel) & Key('snippet#publishedAt').eq(publishedAt)
-  )
-  return response['Items']
-
 
 
 ####################################################
@@ -86,14 +41,16 @@ def getStartAt(item):
 ################################################################################################
 # YoutubeからAPI経由で新着動画リストを取得
 # devKey ... APIキー
+# table ... Youtubeから取得した動画IDの取得済IDを入れるテーブル名
 # channel_owner ... チャンネル所有者名
+# force ... 処理済の重複チェックをせず全IDを取得
 #################################################################################################
-def getVideoListFromYT(devKey, channel_owner):
+def getVideoListFromYT(devKey, table, channel_owner):
     print('getVideoListFromYT start')
-    p_list_ud = owner_to_pid(channel_owner)
+    p_list_id = owner_to_pid(channel_owner)
     
     # チャンネルが見つからない場合
-    if p_list_ud == None:
+    if p_list_id == None:
         print('不明なチャンネル所有者' + channel_owner)
     
 
@@ -101,15 +58,47 @@ def getVideoListFromYT(devKey, channel_owner):
     youtube = build("youtube", "v3", developerKey = devKey)
 
     # チャンネルの新着動画ID一覧の取得
-    v_list = youtubeAPI.get_video_id_in_playlist(p_list_ud, youtube)
+    v_id_list = youtubeAPI.get_video_id_in_playlist(p_list_id, youtube)
 
-    # TODO: 動画一覧のIDは保存しておいて、get_video_itemsで動画詳細を取得するときに、それを省いて絞り込む
-    # 動画ID一覧から動画詳細を取得
-    ret =  youtubeAPI.get_video_items(v_list, youtube )
+    # 全てを対象とする場合
+    # return  youtubeAPI.get_video_items(v_id_list, youtube )
 
-    print('getVideoListFromYT finish')
 
-    return ret
+    ids = getVideoIdsDocument(table)
+
+    # dynamo_pd_tmp = pd.DataFrame(ids, columns=['id'])
+    dynamo_pd = pd.DataFrame(ids, columns=['id'])
+    youtube_pd = pd.DataFrame({'id':v_id_list})
+
+    diff = youtube_pd[~youtube_pd['id'].isin(dynamo_pd['id'])]
+
+    # 配信ステータスが live または upcoming の物を取得し更新対象とする
+    diff_ids = liveStatusIds(os.environ['DYNAMO_DB_VIDEO_LIST_TABLE'], channel_owner)
+
+    # ID配列に変換
+    for index, row in diff.iterrows():
+        diff_ids.append(row.id)
+
+
+    # 新着が0件なら処理しない
+    if len(diff_ids) != 0:
+
+
+        importVideoIdsDocument(diff_ids, channel_owner, table)
+
+        ret =  youtubeAPI.get_video_items(diff_ids, youtube )
+        
+        print('getVideoListFromYT finish')
+
+        return ret
+    
+    print("Update 0")
+    return []
+
+
+
+
+
 
 
 ################################################################################################
@@ -146,7 +135,15 @@ def importVideoListDocument(v_list, table, channel_owner):
                 # channnel
                 # atartAt
                 item['channel'] = channel_owner
+                item['snippet']['description'] = item['snippet']['description'][0:24]
+                item['snippet']['thumbnails']['default']={}
+                item['snippet']['thumbnails']['high']={}
+                item['snippet']['thumbnails']['standard']={}
+                item['snippet']['thumbnails']['maxres']={}
                 startAt = getStartAt(item)
+
+                # 配信ステータスを平滑化
+                item['liveBroadcastContent'] = item['snippet']['liveBroadcastContent']
 
                 # 配信予定のない枠だけを取得した場合
                 if startAt:
@@ -160,28 +157,6 @@ def importVideoListDocument(v_list, table, channel_owner):
     print('importVideoListDocument finish')
 
 
-################################################################################################
-# DynamoDBから動画リストの取得
-# table ... 対象テーブル
-# channel_owner ... チャンネル所有者名
-#################################################################################################
-def getVideoList(table, channel_owner):
-    print('getVideoList start')
-
-    table = dynamodb.Table(table)
-    try:
-        response = table.query(
-            IndexName = 'channel-startAt-index',
-            KeyConditionExpression=Key('channel').eq(channel_owner),
-            ScanIndexForward=False
-        )
-        return response['Items']
-
-    except Exception as e:
-        print('dynamodb get エラー')
-        print(e)
-
-    print('getVideoList finish')
 
 ################################################################################################
 # DynamoDBにチャンネル情報を追加
@@ -202,30 +177,95 @@ def importChannelInfoDocument(channel_infos, table):
         print('dynamodb import エラー')
         print(e)
 
-    print('importDocumentFromYT finish')
+    print('importChannelInfoDocument finish')
 
 
 ################################################################################################
-# DynamoDBからチャンネル情報を取得
+# DynamoDBに取得したYoutbeの動画IDを追加
 # table ... 対象テーブル
-# channel_owner ... チャンネル所有者名
-# 戻り値 ... チャンネル情報
 #################################################################################################
-def getChannelInfoDocument(table):
-    print('importChannelInfoDocument start')
-
-    # cid = owner_to_cid(channel_owner)
+def importVideoIdsDocument(ids, channel, table):
+    print('importVideoIdsDocument start')
 
     # dynamoDBで検索する用の情報を付随する
     table = dynamodb.Table(table)
     try:
-        response = table.scan(        )
-        return response['Items']
+        with table.batch_writer() as batch:
+            for id in ids:
+                batch.put_item(Item={
+                    'id':id,
+                    'channel':channel
+                })
+
     except Exception as e:
         print('dynamodb import エラー')
         print(e)
 
-    print('importDocumentFromYT finish')
+    print('importVideoIdsDocument finish')
+
+
+################################################################################################
+# DynamoDBから保存済Youtbeの動画IDを全件取得
+# table ... 対象テーブル
+#################################################################################################
+def getVideoIdsDocument(table):
+    print('importVideoIdsDocument start')
+
+    # dynamoDBで検索する用の情報を付随する
+    table = dynamodb.Table(table)
+    try:
+
+        response = table.scan()
+        data = response['Items']
+
+        # レスポンスに LastEvaluatedKey が含まれなくなるまでループ処理を実行する
+        while 'LastEvaluatedKey' in response:
+            print(response['LastEvaluatedKey']['uuid'])
+
+            response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+            if 'LastEvaluatedKey' in response:
+                print("LastEvaluatedKey: {}".format(response['LastEvaluatedKey']))
+            data.extend(response['Items'])
+
+        return data
+
+    except Exception as e:
+        print('dynamodb import エラー')
+        print(e)
+
+
+################################################################################################
+# 配信済または廃止に予定の配信の情報を取り直す
+#################################################################################################
+def liveStatusIds(table, channel_owner):
+    table = dynamodb.Table(table)
+    response = table.query(
+        IndexName = 'liveBroadcastContent-index',
+        KeyConditionExpression=Key('liveBroadcastContent').eq('live'),
+        ScanIndexForward=False
+    )
+    data = response['Items']
+
+    response = table.query(
+        IndexName = 'liveBroadcastContent-index',
+        KeyConditionExpression=Key('liveBroadcastContent').eq('upcoming'),
+        ScanIndexForward=False
+    )
+    data.extend(response['Items'])
+
+
+    df = pd.DataFrame(data,columns=['id','channel'])
+
+    ids = []
+    for index, row in df.iterrows():
+        # 現在の更新対象のチャンネル以外を省く
+        if row['channel'] == channel_owner:
+            ids.append(row.id)
+
+    return ids
+    
+
+
 
 
 ################################################################################################
@@ -238,20 +278,21 @@ def lambda_handler(event, context):
 
     # UPDATE_VIDEO_LIST  ... DynamoDB更新
     # GET_VIDEO_LIST ... DynamoDBから取得
-    exec_mode = event['queryStringParameters']['exec_mode']
+    exec_mode = event['exec_mode']
 
     # maru ... 花ノ木まる
-    channel_owner = event['queryStringParameters']['channel']
+    channel_owner = event['channel']
 
     if exec_mode == 'UPDATE_VIDEO_LIST':
         # Youtubeから動画情報の取得
-        v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'], channel_owner)
+        v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'],os.environ['DYNAMO_DB_IDS_TABLE'], channel_owner)
 
-        # 動画情報をDynamoDBに入れる
-        table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
-        importVideoListDocument(v_list, table, channel_owner)
+        if len(v_list) != 0:
+            # 動画情報をDynamoDBに入れる
+            table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+            importVideoListDocument(v_list, table, channel_owner)
 
-        print('lambda finish',event)
+            print('lambda finish',event)
 
         return {
             'statusCode': 201,
@@ -263,29 +304,13 @@ def lambda_handler(event, context):
             'body': "OK"
         }
 
-    elif exec_mode == 'GET_VIDEO_LIST':    # チャンネルの動画リストを更新
-        # https://api.unidule.jp/default/youtube_to_dynamoDB/maru?exec_mode=GET_VIDEO_LIST&channel=maru
-
-        table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
-        v_list = getVideoList(table, channel_owner)
-        
-        return {
-            'statusCode': 200,
-            'headers': {
-                "Access-Control-Allow-Headers": "Content-Type",
-                "Access-Control-Allow-Origin": '*',
-                "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
-            },
-            'body': json.dumps(v_list, default=decimal_default_proc, ensure_ascii=False)
-        }
-    
     elif exec_mode == 'UPDATE_CHANNEL_INFO':  
         # ユニークIDで検索したときも配列で帰って来る
         channel_info = getChannelInfoFromYT(os.environ['YOUTUBE_API_KEY'], channel_owner)
         table = os.environ['DYNAMO_DB_CHANNEL_INFO_TABLE']
         # チャンネル情報の更新
         # 配列で渡す
-        importChannelInfoDocument(channel_info, table, channel_owner)
+        importChannelInfoDocument(channel_info, table)
 
         return {
             'statusCode': 201,
@@ -297,20 +322,6 @@ def lambda_handler(event, context):
             'body': "OK"
         }
     
-    elif exec_mode == 'GET_CHANNEL_INFO':
-        table = os.environ['DYNAMO_DB_CHANNEL_INFO_TABLE']
-
-        infos = getChannelInfoDocument(table)
-
-        return {
-            'statusCode': 201,
-            'headers': {
-                "Access-Control-Allow-Headers": "Content-Type",
-                "Access-Control-Allow-Origin": '*',
-                "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
-            },
-            'body': json.dumps(infos, default=decimal_default_proc, ensure_ascii=False)
-        }        
     elif exec_mode == 'DELETE_VIDEO':
         id = event['queryStringParameters']['video_id']
         table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
@@ -327,26 +338,31 @@ def lambda_handler(event, context):
             },
             'body': "OK"
         }
-    
-# Json dumps時にDecimalを変換するときのモジュール
-def decimal_default_proc(obj):
-    if isinstance(obj, Decimal):
-        return float(obj)
-    raise TypeError
 
+    elif exec_mode == 'UPDATE_VIDEO_ONE': # デバッグ用
 
-#################################################
-# チャンネルオーナー名からチャンネルIDを引く
-#################################################
-def owner_to_cid(channel_owner):
-    for (own , c_id, p_id ) in channelParams:
-        if own == channel_owner:
-            return c_id
+        id = 'Jb2yfMZZAp4'
+        table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        table = dynamodb.Table(table)
+        responce = table.get_item(
+            Key={
+                'id': id
+            }            
+        )
 
-#################################################
-# チャンネルオーナー名から新着プレイリストIDを引く
-#################################################
-def owner_to_pid(channel_owner):
-    for (own , c_id, p_id ) in channelParams:
-        if own == channel_owner:
-            return p_id
+        responce['Item']['liveBroadcastContent'] = 'live'
+
+        responce = table.put_item(
+            Item = responce['Item']
+        )
+
+        return {
+            'statusCode': 203,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+            },
+            'body': "OK"
+        }
+

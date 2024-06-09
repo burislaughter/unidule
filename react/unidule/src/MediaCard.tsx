@@ -55,7 +55,7 @@ export const MediaCard = ({
   return (
     <Card sx={{ maxWidth: 240 }} className={(status == "live" ? "Now-border" : "") + " Card-parent"}>
       <Link target="_brank" href={"https://www.youtube.com/watch?v=" + videoId}>
-        <CardMedia sx={{ height: 140 }} image={imgUrl} />
+        <CardMedia sx={{}} image={imgUrl} component="img" />
       </Link>
       <CardContentEx>
         <Typography variant="body2" gutterBottom component="div" sx={{ fontWeight: "bold" }}>

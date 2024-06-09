@@ -4,10 +4,21 @@ import { Avatar, Box, Button, Divider, Grid, Link, Stack, Typography } from "@mu
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import axios, { AxiosResponse } from "axios";
-import dummyVideoList from "./_dummy/maru_v_list.json"; // ローカル用ダミーjson
-import dummyChannelInfo from "./_dummy/maru_c_info.json"; // ローカル用ダミーjson
 import { MediaCard } from "./MediaCard";
 import { format, addDays, subDays, startOfDay, addHours, compareAsc, compareDesc } from "date-fns";
+
+const channelParams: { [key: string]: string } = {
+  maru: "UCmB1E78Kdgd9z6hN3ONRKow",
+  nagisa: "UCe5mbpYA9Yym4lZTdj06G6Q",
+  nanase: "UCFfKS52xZaus6HunxP3Owsw",
+
+  ida: "UC7Ft50QAmUGWE6-ZfrHOG5Q",
+  ran: "UCVuVw2WDKIYCj9HABYVuREg",
+  roman: "UCbdOhaCW0Ti1qVCb9PKvmxg",
+
+  uniraid: "UCKofJjNEmQ3LwERp3pRVxtw",
+  uniraid_cut: "UCohnUVLcGInaC0l-2A95I5A",
+};
 
 const objectStyle = css({
   padding: "10px",
@@ -18,7 +29,7 @@ const HeaderBox = styled(Box)({
   padding: 8,
   marginTop: 4,
   marginBottom: 4,
-  width: "100%",
+  width: "99%",
   color: "#FFFFFF",
   backgroundColor: "#1976d2",
   borderRadius: 2,
@@ -27,9 +38,15 @@ const HeaderBox = styled(Box)({
   textAlign: "center",
 });
 
+const getChannelInfo = (cis: any[], channel: string): any => {
+  const cid = channelParams[channel];
+
+  const ci = cis.find((x) => x.id == cid);
+
+  return ci;
+};
+
 function App() {
-  // ローカルのダミーファイルを読む場合はtrue
-  const isLocal = false;
   const { useState, useEffect } = React;
 
   const [isLoaded, setLoaded] = useState<boolean>(false);
@@ -44,10 +61,10 @@ function App() {
   // 過去の配信 or 配信済み
   const [videoArchiveList, setVideoArchiveList] = useState<any[]>([]);
 
-  const CHANNEL_MARU_URL = "https://api.unidule.jp/default/youtube_to_dynamoDB/maru?exec_mode=GET_VIDEO_LIST&channel=maru";
-  const CHANNEL_INFO_URL = "https://api.unidule.jp/default/youtube_to_dynamoDB/maru?exec_mode=GET_CHANNEL_INFO&channel=all";
+  const VIDEO_LIST_URL = "https://api.unidule.jp/prd/video_list?channel=all";
+  const CHANNEL_INFO_URL = "https://api.unidule.jp/prd/channel_info";
 
-  const createSukedule = (ci: any, v_lost: any[]) => {
+  const createSukedule = (ci_list: any, v_lost: any[]) => {
     const seasonsArchiveList: React.SetStateAction<any[]> = [];
     const seasonsFutureList: React.SetStateAction<any[]> = [];
     const seasonsTodayList: React.SetStateAction<any[]> = [];
@@ -57,9 +74,6 @@ function App() {
       let isToday = false;
       let isFuture = false;
       let isArchive = false;
-
-      const scheduledStartTime = obj.liveStreamingDetails?.scheduledStartTime;
-      const publishedAt = obj.snippet.publishedAt;
 
       // 開始時刻が有効な場合
       if (obj.startAt) {
@@ -83,6 +97,10 @@ function App() {
           // 本日
           isToday = true;
         }
+
+        // 動画とチャンネル情報の照合
+        const ci = getChannelInfo(ci_list, obj.channel);
+
         const card = (
           <Grid item sm={4} md={3} lg={2} key={index}>
             <MediaCard
@@ -91,7 +109,7 @@ function App() {
               title={obj.snippet.title}
               channelTitle={ci.snippet.title}
               startDateTime={format(new Date(dt), "yyyy/MM/dd HH:mm")}
-              status={obj.snippet.liveBroadcastContent}
+              status={obj.liveBroadcastContent}
               key={index}
             ></MediaCard>
           </Grid>
@@ -113,66 +131,41 @@ function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    if (!isLocal) {
-      // // ローカルのファイルを読む場合
-      // const ci = dummyChannelInfo[0];
+    axios.defaults.baseURL = "https://api.unidule.jp/";
+    axios.defaults.headers.post["Content-Type"] = "application/json;charset=utf-8";
+    axios.defaults.headers.post["Access-Control-Allow-Origin"] = "*";
 
-      // // チャンネル情報
-      // setChannelInfo(ci);
+    const axiosInstance = axios.create({
+      withCredentials: false,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-      axios.defaults.baseURL = "https://api.unidule.jp/";
-      axios.defaults.headers.post["Content-Type"] = "application/json;charset=utf-8";
-      axios.defaults.headers.post["Access-Control-Allow-Origin"] = "*";
+    const promise1 = axiosInstance.get(CHANNEL_INFO_URL, {
+      signal: controller.signal,
+    });
+    const promise2 = axiosInstance.get(VIDEO_LIST_URL, {
+      signal: controller.signal,
+    });
 
-      const axiosInstance = axios.create({
-        withCredentials: false,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      const promise1 = axiosInstance.get(CHANNEL_INFO_URL, {
-        signal: controller.signal,
-      });
-      const promise2 = axiosInstance.get(CHANNEL_MARU_URL, {
-        signal: controller.signal,
-      });
-
-      Promise.all([promise1, promise2]).then(function (values) {
-        const { data: ci_data, status: ci_status } = values[0];
-        // チャンネル情報
-        setChannelInfo(ci_data[0]);
-
-        const { data: v_data, status: v_status } = values[1];
-
-        // 取得した動画一覧をリストに格納
-        const { seasonsArchiveList, seasonsFutureList, seasonsTodayList } = createSukedule(ci_data[0], v_data);
-
-        setVideoArchiveList(seasonsArchiveList);
-        setVideoFutureList(seasonsFutureList);
-        setVideoTodayList(seasonsTodayList);
-
-        setLoaded(true);
-        console.log("read ok");
-      });
-    } else {
-      // ローカルのファイルを読む場合
-      const ci = dummyChannelInfo[0];
-
+    Promise.all([promise1, promise2]).then(function (values) {
+      const { data: ci_data, status: ci_status } = values[0];
       // チャンネル情報
-      setChannelInfo(ci);
+      setChannelInfo(ci_data);
 
-      const { seasonsArchiveList, seasonsFutureList, seasonsTodayList } = createSukedule(ci, dummyVideoList);
+      const { data: v_data, status: v_status } = values[1];
+
+      // 取得した動画一覧をリストに格納
+      const { seasonsArchiveList, seasonsFutureList, seasonsTodayList } = createSukedule(ci_data, v_data);
 
       setVideoArchiveList(seasonsArchiveList);
       setVideoFutureList(seasonsFutureList);
       setVideoTodayList(seasonsTodayList);
 
-      // 配信/動画リスト
-      // setVideoList(seasonsList);
       setLoaded(true);
-      console.log("read local ok");
-    }
+      console.log("read ok");
+    });
 
     return () => {
       controller.abort();
@@ -182,14 +175,18 @@ function App() {
   return (
     <>
       <div css={objectStyle}>
-        <Typography variant="h1" component="h2" mt={2}>
+        <Typography variant="h1" component="h2" mt={2} sx={{ fontSize: "10vw" }}>
           ゆにじゅ～る(仮設)
+        </Typography>
+        <Typography sx={{ textAlign: "right" }}>[非公式]ファンメイドスケジューラー</Typography>
+        <Typography sx={{ textAlign: "right", fontSize: "0.75rem" }}>
+          お問い合わせ <Link href="https://x.com/distant_zz">@distant_zz</Link>
         </Typography>
 
         {isLoaded && (
           <>
             {/* チャンネル情報 */}
-            <Stack direction="row">
+            {/* <Stack direction="row">
               <Box>
                 <Link target="_blank" href={"https://www.youtube.com/" + channelInfo.snippet.customUrl}>
                   <Avatar
@@ -210,7 +207,7 @@ function App() {
 
             <Box my={1}>
               <Divider></Divider>
-            </Box>
+            </Box> */}
 
             <HeaderBox sx={{ backgroundColor: "#00C070 !important" }}>本日の配信</HeaderBox>
             {/* 本日の配信、動画リスト */}
