@@ -16,10 +16,14 @@ event = {}
 # event['queryStringParameters']['video_id'] = "L_oVYEVYnI8"
 
 
-event['exec_mode'] = 'UPDATE_VIDEO_ONE'
-# event['exec_mode'] = 'UPDATE_VIDEO_LIST'
+# event['exec_mode'] = 'UPDATE_VIDEO_ONE'
+event['exec_mode'] = 'UPDATE_VIDEO_LIST'
 # event['exec_mode'] = 'UPDATE_CHANNEL_INFO'
-event['channel'] = 'nagisa'
+event['channel'] = 'maru'
+
+event['force'] = True
+
+
 # event['video_id'] = 'Jb2yfMZZAp4'
 lambda_handler_update_dynamo(event,None)
 

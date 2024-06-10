@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import axios, { AxiosResponse } from "axios";
 import { MediaCard } from "./MediaCard";
-import { format, addDays, subDays, startOfDay, addHours, compareAsc, compareDesc } from "date-fns";
+import { format, parse, addDays, subDays, startOfDay, addHours, subHours, compareAsc, compareDesc } from "date-fns";
 
 const channelParams: { [key: string]: string } = {
   maru: "UCmB1E78Kdgd9z6hN3ONRKow",
@@ -68,24 +68,28 @@ function App() {
     const seasonsArchiveList: React.SetStateAction<any[]> = [];
     const seasonsFutureList: React.SetStateAction<any[]> = [];
     const seasonsTodayList: React.SetStateAction<any[]> = [];
+    const seasonsTodayFinishList: React.SetStateAction<any[]> = [];
 
     v_lost.forEach((obj: any, index: number) => {
       // 本日は04:00まで
       let isToday = false;
+      let isTodayFinished = false;
       let isFuture = false;
       let isArchive = false;
+      let isTodayUpload = false;
 
       // 開始時刻が有効な場合
       if (obj.startAt) {
         // 本日の配信か、もっと未来の配信予定か、アーカイブor動画か
         const now = new Date();
         // 日付変更を跨いでいた場合は昨日からカウント
-        const ofsDay = now.getHours() <= 4 ? -1 : 0;
+        // 3:59 まで
+        const ofsDay = now.getHours() < 4 ? -1 : 0;
 
         const startDt = addHours(startOfDay(addDays(now, ofsDay)), 4); // 本日の午前4時を取得
         const endDt = addDays(startDt, 1); // 本日の午前4時に1日を加算して本日の終わりを取得
 
-        const dt = new Date(obj.startAt);
+        let dt = new Date(obj.startAt);
 
         if (startDt.getTime() > dt.getTime()) {
           // 過去
@@ -93,6 +97,13 @@ function App() {
         } else if (endDt.getTime() < dt.getTime()) {
           // 未来
           isFuture = true;
+        } else if (obj.liveBroadcastContent == "none" && obj.liveStreamingDetails != undefined) {
+          // 本日の終了分
+          dt = new Date(obj.liveStreamingDetails.actualEndTime);
+          isTodayFinished = true;
+        } else if (obj.liveStreamingDetails == undefined) {
+          // 本日アップロードされた動画
+          isTodayUpload = true;
         } else {
           // 本日
           isToday = true;
@@ -104,13 +115,16 @@ function App() {
         const card = (
           <Grid item sm={4} md={3} lg={2} key={index}>
             <MediaCard
-              imgUrl={obj.snippet.thumbnails.medium.url}
+              key={index}
+              imgUrl={obj.snippet.thumbnails.standard?.url ? obj.snippet.thumbnails.standard.url : obj.snippet.thumbnails.medium.url}
               videoId={obj.id}
-              title={obj.snippet.title}
-              channelTitle={ci.snippet.title}
+              title={obj.snippet?.title}
+              description={obj.snippet?.description}
+              channelTitle={ci.snippet?.title}
               startDateTime={format(new Date(dt), "yyyy/MM/dd HH:mm")}
               status={obj.liveBroadcastContent}
-              key={index}
+              isTodayFinished={isTodayFinished}
+              isTodayUpload={isTodayUpload}
             ></MediaCard>
           </Grid>
         );
@@ -118,14 +132,19 @@ function App() {
         if (isArchive) {
           seasonsArchiveList.push(card);
         } else if (isFuture) {
-          seasonsFutureList.push(card);
-        } else if (isToday) {
-          seasonsTodayList.push(card);
+          seasonsFutureList.unshift(card);
+        } else if (isTodayFinished) {
+          seasonsTodayFinishList.unshift(card);
+        } else if (isTodayUpload) {
+          seasonsTodayFinishList.push(card);
+        } else {
+          seasonsTodayList.unshift(card);
         }
       }
     });
 
-    return { seasonsArchiveList, seasonsFutureList, seasonsTodayList };
+    const todayList = seasonsTodayList.concat(seasonsTodayFinishList);
+    return { seasonsArchiveList, seasonsFutureList, todayList };
   };
 
   useEffect(() => {
@@ -156,12 +175,21 @@ function App() {
 
       const { data: v_data, status: v_status } = values[1];
 
+      const tmp_v_date = v_data.filter((item: any) => {
+        const t1 = new Date(item.startAt);
+        const t2 = subDays(new Date(), 7);
+        return t1 > t2;
+      });
+
       // 取得した動画一覧をリストに格納
-      const { seasonsArchiveList, seasonsFutureList, seasonsTodayList } = createSukedule(ci_data, v_data);
+      const { seasonsArchiveList, seasonsFutureList, todayList } = createSukedule(ci_data, tmp_v_date);
+
+      // 件数を減らす
+      // 直近一週間分
 
       setVideoArchiveList(seasonsArchiveList);
       setVideoFutureList(seasonsFutureList);
-      setVideoTodayList(seasonsTodayList);
+      setVideoTodayList(todayList);
 
       setLoaded(true);
       console.log("read ok");
@@ -211,7 +239,7 @@ function App() {
 
             <HeaderBox sx={{ backgroundColor: "#00C070 !important" }}>本日の配信</HeaderBox>
             {/* 本日の配信、動画リスト */}
-            <Box sx={{ flexGrow: 1, width: "100%", margin: "20px auto" }}>
+            <Box sx={{ flexGrow: 1, width: "100%", margin: "0px auto" }}>
               <Grid container spacing={4}>
                 {videoTodayList}
               </Grid>
@@ -232,8 +260,8 @@ function App() {
               <Divider></Divider>
             </Box>
 
-            <HeaderBox sx={{ backgroundColor: "#F28020 !important" }}>アーカイブ / 動画</HeaderBox>
-            {/* 過去のの配信、動画リスト */}
+            <HeaderBox sx={{ backgroundColor: "#F28020 !important" }}>過去7日分のアーカイブ / 動画</HeaderBox>
+            {/* 過去の配信、動画リスト */}
             <Box sx={{ flexGrow: 1, width: "100%", margin: "20px auto" }}>
               <Grid container spacing={4}>
                 {videoArchiveList}

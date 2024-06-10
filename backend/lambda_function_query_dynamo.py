@@ -43,7 +43,7 @@ def getVideoList(table, channel_owner):
                 KeyConditionExpression=Key('channel').eq(channel_owner),
                 ScanIndexForward=False
             )
-            print('getVideoList all finish')
+            print(f'getVideoList {channel_owner} finish')
 
         return response['Items']
 

@@ -2,6 +2,21 @@
   border-color: rgb(253, 41, 41);
   border-style: solid;
   border-width: 2px;
+
+  &.finished {
+    border-color: #688ea6;
+  }
+}
+
+.description-area {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1; /* 一行以上は省略 */
+  margin-left: 8px !important;
+  margin-right: 8px !important;
+  color: #000000;
+  font-size: 0.8rem !important;
 }
 
 .Card-parent {
@@ -18,4 +33,20 @@
   padding-right: 50px;
   padding-left: 50px;
   color: white;
+
+  &.finished {
+    padding-left: 43px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    font-size: 0.8rem;
+    background-color: #688ea6;
+  }
+
+  &.upload {
+    padding-left: 45px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #000000;
+    background-color: #f2ec22;
+  }
 }

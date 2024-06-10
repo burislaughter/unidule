@@ -45,7 +45,7 @@ def getStartAt(item):
 # channel_owner ... チャンネル所有者名
 # force ... 処理済の重複チェックをせず全IDを取得
 #################################################################################################
-def getVideoListFromYT(devKey, table, channel_owner):
+def getVideoListFromYT(devKey, table, channel_owner,is_force):
     print('getVideoListFromYT start')
     p_list_id = owner_to_pid(channel_owner)
     
@@ -61,7 +61,8 @@ def getVideoListFromYT(devKey, table, channel_owner):
     v_id_list = youtubeAPI.get_video_id_in_playlist(p_list_id, youtube)
 
     # 全てを対象とする場合
-    # return  youtubeAPI.get_video_items(v_id_list, youtube )
+    if is_force:
+        return  youtubeAPI.get_video_items(v_id_list, youtube )
 
 
     ids = getVideoIdsDocument(table)
@@ -82,14 +83,9 @@ def getVideoListFromYT(devKey, table, channel_owner):
 
     # 新着が0件なら処理しない
     if len(diff_ids) != 0:
-
-
         importVideoIdsDocument(diff_ids, channel_owner, table)
-
-        ret =  youtubeAPI.get_video_items(diff_ids, youtube )
-        
+        ret =  youtubeAPI.get_video_items(diff_ids, youtube )        
         print('getVideoListFromYT finish')
-
         return ret
     
     print("Update 0")
@@ -135,10 +131,11 @@ def importVideoListDocument(v_list, table, channel_owner):
                 # channnel
                 # atartAt
                 item['channel'] = channel_owner
-                item['snippet']['description'] = item['snippet']['description'][0:24]
+                item['snippet']['description'] = item['snippet']['description'][0:32]
                 item['snippet']['thumbnails']['default']={}
+                # item['snippet']['thumbnails']['medium']={}
                 item['snippet']['thumbnails']['high']={}
-                item['snippet']['thumbnails']['standard']={}
+                # item['snippet']['thumbnails']['standard']={}
                 item['snippet']['thumbnails']['maxres']={}
                 startAt = getStartAt(item)
 
@@ -283,9 +280,12 @@ def lambda_handler(event, context):
     # maru ... 花ノ木まる
     channel_owner = event['channel']
 
+
     if exec_mode == 'UPDATE_VIDEO_LIST':
+        is_force = event['force'] if 'force' in event else ""
+
         # Youtubeから動画情報の取得
-        v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'],os.environ['DYNAMO_DB_IDS_TABLE'], channel_owner)
+        v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'],os.environ['DYNAMO_DB_IDS_TABLE'], channel_owner, is_force)
 
         if len(v_list) != 0:
             # 動画情報をDynamoDBに入れる
@@ -350,7 +350,7 @@ def lambda_handler(event, context):
             }            
         )
 
-        responce['Item']['liveBroadcastContent'] = 'live'
+        responce['Item']['liveBroadcastContent'] = 'none'
 
         responce = table.put_item(
             Item = responce['Item']
