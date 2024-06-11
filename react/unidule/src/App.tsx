@@ -6,19 +6,8 @@ import { css } from "@emotion/react";
 import axios, { AxiosResponse } from "axios";
 import { MediaCard } from "./MediaCard";
 import { format, parse, addDays, subDays, startOfDay, addHours, subHours, compareAsc, compareDesc } from "date-fns";
-
-const channelParams: { [key: string]: string } = {
-  maru: "UCmB1E78Kdgd9z6hN3ONRKow",
-  nagisa: "UCe5mbpYA9Yym4lZTdj06G6Q",
-  nanase: "UCFfKS52xZaus6HunxP3Owsw",
-
-  ida: "UC7Ft50QAmUGWE6-ZfrHOG5Q",
-  ran: "UCVuVw2WDKIYCj9HABYVuREg",
-  roman: "UCbdOhaCW0Ti1qVCb9PKvmxg",
-
-  uniraid: "UCKofJjNEmQ3LwERp3pRVxtw",
-  uniraid_cut: "UCohnUVLcGInaC0l-2A95I5A",
-};
+import { channelParams } from "./const";
+import ChannelIconObj from "./ChannelIconObj";
 
 const objectStyle = css({
   padding: "10px",
@@ -38,12 +27,18 @@ const HeaderBox = styled(Box)({
   textAlign: "center",
 });
 
-const getChannelInfo = (cis: any[], channel: string): any => {
+export const getChannelInfo = (cis: any[], channel: string): any => {
   const cid = channelParams[channel];
+  return cis.find((x) => x.id == cid.uid);
+};
 
-  const ci = cis.find((x) => x.id == cid);
-
-  return ci;
+export const getFullName = (channel: string): string => {
+  const cid = channelParams[channel];
+  return cid.name;
+};
+export const getOrder = (channel: string): number => {
+  const cid = channelParams[channel];
+  return cid.order;
 };
 
 function App() {
@@ -56,17 +51,34 @@ function App() {
 
   // 本日の配信予定 or 配信済み
   const [videoTodayList, setVideoTodayList] = useState<any[]>([]);
-  // 未来の配信予定 or 公開予定
+  // 明日以降
   const [videoFutureList, setVideoFutureList] = useState<any[]>([]);
   // 過去の配信 or 配信済み
   const [videoArchiveList, setVideoArchiveList] = useState<any[]>([]);
 
+  // フィルタリング時のマスター
+  const [videoTodayListMaster, setVideoTodayListMaster] = useState<any[]>([]);
+  const [videoFutureListMaster, setVideoFutureListMaster] = useState<any[]>([]);
+  const [videoArchiveListMaster, setVideoArchiveListMaster] = useState<any[]>([]);
+
+  // コールバック中に参照したいのでrefオブジェクトを作成
+  const videoTodayListRef = React.useRef<any[]>();
+  const videoFutureLListRef = React.useRef<any[]>();
+  const videoArchiveListRef = React.useRef<any[]>();
+  videoTodayListRef.current = videoTodayListMaster;
+  videoFutureLListRef.current = videoFutureListMaster;
+  videoArchiveListRef.current = videoArchiveListMaster;
+
+  const [channelIconObjs, setChannelIconObjs] = useState<any[]>();
+
   const VIDEO_LIST_URL = "https://api.unidule.jp/prd/video_list?channel=all";
   const CHANNEL_INFO_URL = "https://api.unidule.jp/prd/channel_info";
 
+  const [sortSelect, setSortSelect] = useState<Set<string>>(new Set([]));
+
   const createSukedule = (ci_list: any, v_lost: any[]) => {
-    const seasonsArchiveList: React.SetStateAction<any[]> = [];
-    const seasonsFutureList: React.SetStateAction<any[]> = [];
+    const archiveListMaster: React.SetStateAction<any[]> = [];
+    const futureListMaster: React.SetStateAction<any[]> = [];
     const seasonsTodayList: React.SetStateAction<any[]> = [];
     const seasonsTodayFinishList: React.SetStateAction<any[]> = [];
 
@@ -113,10 +125,10 @@ function App() {
         const ci = getChannelInfo(ci_list, obj.channel);
 
         const card = (
-          <Grid item sm={4} md={3} lg={2} key={index}>
+          <Grid item sm={4} md={3} lg={2} key={index + "-" + obj.channel}>
             <MediaCard
               key={index}
-              imgUrl={obj.snippet.thumbnails.standard?.url ? obj.snippet.thumbnails.standard.url : obj.snippet.thumbnails.medium.url}
+              imgUrl={obj.snippet.thumbnails.maxres?.url ? obj.snippet.thumbnails.maxres?.url : obj.snippet.thumbnails.medium?.url}
               videoId={obj.id}
               title={obj.snippet?.title}
               description={obj.snippet?.description}
@@ -130,9 +142,9 @@ function App() {
         );
 
         if (isArchive) {
-          seasonsArchiveList.push(card);
+          archiveListMaster.push(card);
         } else if (isFuture) {
-          seasonsFutureList.unshift(card);
+          futureListMaster.unshift(card);
         } else if (isTodayFinished) {
           seasonsTodayFinishList.unshift(card);
         } else if (isTodayUpload) {
@@ -143,9 +155,32 @@ function App() {
       }
     });
 
-    const todayList = seasonsTodayList.concat(seasonsTodayFinishList);
-    return { seasonsArchiveList, seasonsFutureList, todayList };
+    const todayListMaster = seasonsTodayList.concat(seasonsTodayFinishList);
+    return { archiveListMaster, futureListMaster, todayListMaster };
   };
+  useEffect(() => {}, [sortSelect.size]);
+
+  // ソートボタンが押された時のコールバック
+  const sortBtnClickCB = React.useCallback(
+    (channel: string) => {
+      sortSelect?.add(channel);
+      setSortSelect(sortSelect);
+
+      // フィルタイング結果を反映
+
+      const vl = videoTodayListRef!.current!;
+      setVideoTodayList(vl.filter((x) => sortSelect.has(x.key.split("-")[1])));
+
+      const fl = videoFutureLListRef!.current!;
+      setVideoFutureList(fl.filter((x) => sortSelect.has(x.key.split("-")[1])));
+
+      const al = videoArchiveListRef!.current!;
+      setVideoArchiveList(al.filter((x) => sortSelect.has(x.key.split("-")[1])));
+
+      console.log("sortBtnClickCB:" + channel);
+    },
+    [videoTodayListMaster, videoFutureListMaster, videoArchiveListMaster]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -173,6 +208,14 @@ function App() {
       // チャンネル情報
       setChannelInfo(ci_data);
 
+      // 初めに固定長で確保
+      const channelIconsList: any[] = [0, 0, 0, 0, 0, 0, 0, 0];
+      for (let item of ci_data) {
+        const idx = getOrder(item.channel);
+        channelIconsList[idx] = ChannelIconObj(item, idx, sortBtnClickCB);
+      }
+      setChannelIconObjs(channelIconsList);
+
       const { data: v_data, status: v_status } = values[1];
 
       const tmp_v_date = v_data.filter((item: any) => {
@@ -182,14 +225,18 @@ function App() {
       });
 
       // 取得した動画一覧をリストに格納
-      const { seasonsArchiveList, seasonsFutureList, todayList } = createSukedule(ci_data, tmp_v_date);
+      const { archiveListMaster, futureListMaster, todayListMaster } = createSukedule(ci_data, tmp_v_date);
 
       // 件数を減らす
       // 直近一週間分
-
-      setVideoArchiveList(seasonsArchiveList);
-      setVideoFutureList(seasonsFutureList);
-      setVideoTodayList(todayList);
+      const c = todayListMaster.concat();
+      setVideoTodayListMaster(todayListMaster.concat());
+      setVideoFutureListMaster(futureListMaster.concat());
+      setVideoArchiveListMaster(archiveListMaster.concat());
+      // 本日の配信は先行でこの時点で入れる
+      setVideoTodayList(todayListMaster);
+      setVideoFutureList(futureListMaster);
+      setVideoArchiveList(archiveListMaster);
 
       setLoaded(true);
       console.log("read ok");
@@ -214,28 +261,15 @@ function App() {
         {isLoaded && (
           <>
             {/* チャンネル情報 */}
-            {/* <Stack direction="row">
-              <Box>
-                <Link target="_blank" href={"https://www.youtube.com/" + channelInfo.snippet.customUrl}>
-                  <Avatar
-                    alt={channelInfo.snippet.title}
-                    src={channelInfo.snippet.thumbnails.default.url}
-                    sx={{
-                      width: channelInfo.snippet.thumbnails.default.width,
-                      height: channelInfo.snippet.thumbnails.default.height,
-                    }}
-                  />
-                </Link>
-              </Box>
-              <Box py={1}>
-                <Typography my={0}>{channelInfo.snippet.title}</Typography>
-                <Typography my={0}>{channelInfo.snippet.customUrl}</Typography>
-              </Box>{" "}
+            <Stack direction="row" sx={{ alignItems: "flex-start", marginTop: "6px" }}>
+              {" "}
+              {channelIconObjs!.slice(0, 6)}
             </Stack>
+            <Stack direction="row">{channelIconObjs!.slice(6, 8)}</Stack>
 
             <Box my={1}>
               <Divider></Divider>
-            </Box> */}
+            </Box>
 
             <HeaderBox sx={{ backgroundColor: "#00C070 !important" }}>本日の配信</HeaderBox>
             {/* 本日の配信、動画リスト */}

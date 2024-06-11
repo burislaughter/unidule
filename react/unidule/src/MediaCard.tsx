@@ -9,6 +9,7 @@ import { Box, CardActionArea, Link, colors } from "@mui/material";
 import styled from "@emotion/styled";
 import { format } from "date-fns";
 import "./MediaCard.css";
+import { LazyLoadImage } from "react-lazy-load-image-component";
 
 type Props = {
   imgUrl: string;
@@ -91,7 +92,8 @@ export const MediaCard = ({
             }
           }
           image={imgUrl}
-          // component="img"
+          component="img"
+          loading="lazy"
         />
       </Link>
       <CardContentEx>

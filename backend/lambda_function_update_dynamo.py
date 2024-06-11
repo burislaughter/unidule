@@ -128,15 +128,15 @@ def importVideoListDocument(v_list, table, channel_owner):
         with table.batch_writer() as batch:
             for item in v_list:
                 # DynamoDB用のフィールドを追加
-                # channnel
+                # channel
                 # atartAt
                 item['channel'] = channel_owner
                 item['snippet']['description'] = item['snippet']['description'][0:32]
                 item['snippet']['thumbnails']['default']={}
                 # item['snippet']['thumbnails']['medium']={}
                 item['snippet']['thumbnails']['high']={}
-                # item['snippet']['thumbnails']['standard']={}
-                item['snippet']['thumbnails']['maxres']={}
+                item['snippet']['thumbnails']['standard']={}
+                # item['snippet']['thumbnails']['maxres']={}
                 startAt = getStartAt(item)
 
                 # 配信ステータスを平滑化
@@ -159,8 +159,9 @@ def importVideoListDocument(v_list, table, channel_owner):
 # DynamoDBにチャンネル情報を追加
 # channel_infos ... チャンネル情報
 # table ... 対象テーブル
+# channel_owner ... チャンネルオーナー
 #################################################################################################
-def importChannelInfoDocument(channel_infos, table):
+def importChannelInfoDocument(channel_infos, table, channel_owner):
     print('importChannelInfoDocument start')
 
     # dynamoDBで検索する用の情報を付随する
@@ -168,6 +169,7 @@ def importChannelInfoDocument(channel_infos, table):
     try:
         with table.batch_writer() as batch:
             for item in channel_infos:
+                item['channel'] = channel_owner
                 batch.put_item(Item=item)
 
     except Exception as e:
@@ -310,7 +312,7 @@ def lambda_handler(event, context):
         table = os.environ['DYNAMO_DB_CHANNEL_INFO_TABLE']
         # チャンネル情報の更新
         # 配列で渡す
-        importChannelInfoDocument(channel_info, table)
+        importChannelInfoDocument(channel_info, table, channel_owner)
 
         return {
             'statusCode': 201,
