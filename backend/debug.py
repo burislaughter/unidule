@@ -19,7 +19,7 @@ event = {}
 # event['exec_mode'] = 'UPDATE_VIDEO_ONE'
 event['exec_mode'] = 'UPDATE_VIDEO_LIST'
 # event['exec_mode'] = 'UPDATE_CHANNEL_INFO'
-event['channel'] = 'maru'
+event['channel'] = 'ran'
 
 event['force'] = True
 

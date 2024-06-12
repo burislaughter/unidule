@@ -22,6 +22,7 @@ type Props = {
   status: string; // ステータス  live （ライブ配信中）       upcoming　（ライブ配信予約）    none　（ライブ配信終了） published　（動画公開）       premier プレミア
   isTodayFinished: boolean; // 本日の終了した配信
   isTodayUpload: boolean; // 本日アップロードされた動画
+  isToday: boolean; // 本日のもの
 };
 
 const CardContentEx = styled(CardContent)`
@@ -43,6 +44,7 @@ export const MediaCard = ({
   status,
   isTodayFinished,
   isTodayUpload,
+  isToday,
 }: Props) => {
   let startDateStr = "";
   let startTimeStr = "";
@@ -67,6 +69,10 @@ export const MediaCard = ({
     startDateTimeStateStr = " に公開";
   }
 
+  if (isToday || isTodayUpload) {
+    startDateStr = format(new Date(startDateTime), "M月dd日");
+  }
+
   // ショート動画かどうか
   const linkBaseUrl = title.indexOf("#shorts") == -1 ? "https://www.youtube.com/watch?v=" : "https://www.youtube.com/shorts/";
 
@@ -85,16 +91,7 @@ export const MediaCard = ({
   return (
     <Card sx={{}} className={(status == "live" ? "Now-border" : "") + (isTodayFinished ? " Now-border finished" : "") + " Card-parent"}>
       <Link target="_brank" href={linkBaseUrl + videoId}>
-        <CardMedia
-          sx={
-            {
-              //  objectViewBox: inset(80px 180px 30px 20px);
-            }
-          }
-          image={imgUrl}
-          component="img"
-          loading="lazy"
-        />
+        <CardMedia image={imgUrl} component="img" loading="lazy" />
       </Link>
       <CardContentEx>
         <Typography variant="body2" gutterBottom component="div" sx={{ fontWeight: "bold" }}>

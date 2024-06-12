@@ -2,12 +2,14 @@
 import * as React from "react";
 import { Avatar, Box, Button, Divider, Grid, Link, Stack, Typography } from "@mui/material";
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
-import axios, { AxiosResponse } from "axios";
+import { ThemeProvider, css } from "@emotion/react";
+import axios from "axios";
 import { MediaCard } from "./MediaCard";
 import { format, parse, addDays, subDays, startOfDay, addHours, subHours, compareAsc, compareDesc } from "date-fns";
 import { channelParams } from "./const";
-import ChannelIconObj from "./ChannelIconObj";
+import { ChannelIconComp } from "./ChannelIconComp";
+import { ResetIconComp } from "./ResetIconComp";
+import theme from "./theme";
 
 const objectStyle = css({
   padding: "10px",
@@ -47,8 +49,6 @@ function App() {
   const [isLoaded, setLoaded] = useState<boolean>(false);
   const [channelInfo, setChannelInfo] = useState<any>();
 
-  // const [videoList, setVideoList] = useState<any[]>([]);
-
   // 本日の配信予定 or 配信済み
   const [videoTodayList, setVideoTodayList] = useState<any[]>([]);
   // 明日以降
@@ -69,8 +69,6 @@ function App() {
   videoFutureLListRef.current = videoFutureListMaster;
   videoArchiveListRef.current = videoArchiveListMaster;
 
-  const [channelIconObjs, setChannelIconObjs] = useState<any[]>();
-
   const VIDEO_LIST_URL = "https://api.unidule.jp/prd/video_list?channel=all";
   const CHANNEL_INFO_URL = "https://api.unidule.jp/prd/channel_info";
 
@@ -81,6 +79,8 @@ function App() {
     const futureListMaster: React.SetStateAction<any[]> = [];
     const seasonsTodayList: React.SetStateAction<any[]> = [];
     const seasonsTodayFinishList: React.SetStateAction<any[]> = [];
+
+    console.log(sortSelect);
 
     v_lost.forEach((obj: any, index: number) => {
       // 本日は04:00まで
@@ -137,6 +137,7 @@ function App() {
               status={obj.liveBroadcastContent}
               isTodayFinished={isTodayFinished}
               isTodayUpload={isTodayUpload}
+              isToday={isToday}
             ></MediaCard>
           </Grid>
         );
@@ -158,29 +159,45 @@ function App() {
     const todayListMaster = seasonsTodayList.concat(seasonsTodayFinishList);
     return { archiveListMaster, futureListMaster, todayListMaster };
   };
-  useEffect(() => {}, [sortSelect.size]);
 
-  // ソートボタンが押された時のコールバック
-  const sortBtnClickCB = React.useCallback(
+  // フィルター系ボタンが押された時のコールバック
+  const fillterBtnClickCB = React.useCallback(
     (channel: string) => {
-      sortSelect?.add(channel);
+      if (sortSelect.has(channel)) {
+        sortSelect?.delete(channel);
+      } else {
+        sortSelect?.add(channel);
+      }
       setSortSelect(sortSelect);
 
-      // フィルタイング結果を反映
-
-      const vl = videoTodayListRef!.current!;
-      setVideoTodayList(vl.filter((x) => sortSelect.has(x.key.split("-")[1])));
-
-      const fl = videoFutureLListRef!.current!;
-      setVideoFutureList(fl.filter((x) => sortSelect.has(x.key.split("-")[1])));
-
-      const al = videoArchiveListRef!.current!;
-      setVideoArchiveList(al.filter((x) => sortSelect.has(x.key.split("-")[1])));
+      if (sortSelect.size == 0) {
+        resetBtnClickCB();
+      } else {
+        // フィルタイング結果を反映
+        const vl = videoTodayListRef!.current!;
+        setVideoTodayList(vl.filter((x) => sortSelect.has(x.key.split("-")[1])));
+        const fl = videoFutureLListRef!.current!;
+        setVideoFutureList(fl.filter((x) => sortSelect.has(x.key.split("-")[1])));
+        const al = videoArchiveListRef!.current!;
+        setVideoArchiveList(al.filter((x) => sortSelect.has(x.key.split("-")[1])));
+      }
 
       console.log("sortBtnClickCB:" + channel);
     },
     [videoTodayListMaster, videoFutureListMaster, videoArchiveListMaster]
   );
+
+  // フィルターリセット
+  const resetBtnClickCB = React.useCallback(() => {
+    setVideoTodayList((vl) => videoTodayListRef!.current!);
+    setVideoFutureList((fl) => videoFutureLListRef!.current!);
+    setVideoArchiveList((vl) => videoArchiveListRef!.current!);
+
+    setSortSelect((_s) => {
+      _s.clear();
+      return _s;
+    });
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -208,16 +225,7 @@ function App() {
       // チャンネル情報
       setChannelInfo(ci_data);
 
-      // 初めに固定長で確保
-      const channelIconsList: any[] = [0, 0, 0, 0, 0, 0, 0, 0];
-      for (let item of ci_data) {
-        const idx = getOrder(item.channel);
-        channelIconsList[idx] = ChannelIconObj(item, idx, sortBtnClickCB);
-      }
-      setChannelIconObjs(channelIconsList);
-
       const { data: v_data, status: v_status } = values[1];
-
       const tmp_v_date = v_data.filter((item: any) => {
         const t1 = new Date(item.startAt);
         const t2 = subDays(new Date(), 7);
@@ -229,7 +237,6 @@ function App() {
 
       // 件数を減らす
       // 直近一週間分
-      const c = todayListMaster.concat();
       setVideoTodayListMaster(todayListMaster.concat());
       setVideoFutureListMaster(futureListMaster.concat());
       setVideoArchiveListMaster(archiveListMaster.concat());
@@ -250,22 +257,43 @@ function App() {
   return (
     <>
       <div css={objectStyle}>
-        <Typography variant="h1" component="h2" mt={2} sx={{ fontSize: "10vw" }}>
-          ゆにじゅ～る(仮設)
+        <Typography align="center" fontFamily="'RocknRoll One'" mx={1} sx={{ fontSize: "14vw" }}>
+          ゆにじゅ～る
         </Typography>
         <Typography sx={{ textAlign: "right" }}>[非公式]ファンメイドスケジューラー</Typography>
-        <Typography sx={{ textAlign: "right", fontSize: "0.75rem" }}>
+        <Typography sx={{ textAlign: "right", fontSize: "0.75rem" }}>build 2024.06.12</Typography>
+        <Typography sx={{ textAlign: "right", fontSize: "0.75rem", marginBottom: "4px" }}>
           お問い合わせ <Link href="https://x.com/distant_zz">@distant_zz</Link>
         </Typography>
 
         {isLoaded && (
           <>
             {/* チャンネル情報 */}
-            <Stack direction="row" sx={{ alignItems: "flex-start", marginTop: "6px" }}>
-              {" "}
-              {channelIconObjs!.slice(0, 6)}
-            </Stack>
-            <Stack direction="row">{channelIconObjs!.slice(6, 8)}</Stack>
+            {(function () {
+              const channelIconsList: any[] = [0, 0, 0, 0, 0, 0, 0, 0];
+              for (let item of channelInfo) {
+                const idx = getOrder(item.channel);
+                const isSelected = sortSelect.size == 0 ? true : sortSelect.has(item.channel);
+
+                channelIconsList[idx] = (
+                  <ChannelIconComp
+                    key={idx + "-" + item.channel}
+                    channel={item.channel}
+                    cb={fillterBtnClickCB}
+                    imgUrl={item.snippet.thumbnails.default.url}
+                    fullName={getFullName(item.channel)}
+                    isSelected={isSelected}
+                  ></ChannelIconComp>
+                );
+              }
+
+              channelIconsList.push(<ResetIconComp key={0 + "-" + '"reset"'} channel={"reset"} cb={resetBtnClickCB}></ResetIconComp>);
+              return (
+                <Stack direction="row" sx={{ alignItems: "flex-start", marginTop: "6px", flexWrap: "wrap" }}>
+                  {channelIconsList}
+                </Stack>
+              );
+            })()}
 
             <Box my={1}>
               <Divider></Divider>
@@ -273,15 +301,20 @@ function App() {
 
             <HeaderBox sx={{ backgroundColor: "#00C070 !important" }}>本日の配信</HeaderBox>
             {/* 本日の配信、動画リスト */}
-            <Box sx={{ flexGrow: 1, width: "100%", margin: "0px auto" }}>
-              <Grid container spacing={4}>
-                {videoTodayList}
-              </Grid>
-            </Box>
-
-            <Box my={1}>
-              <Divider></Divider>
-            </Box>
+            {videoTodayList.length != 0 && (
+              <Box sx={{ flexGrow: 1, width: "100%", margin: "0px auto", minHeight: "40px" }}>
+                <Grid container spacing={4}>
+                  {videoTodayList}
+                </Grid>
+              </Box>
+            )}
+            {videoTodayList.length == 0 && (
+              <Box sx={{ minHeight: "140px" }}>
+                <Typography sx={{ fontSize: "0.75rem" }}>そこ(Youtube)に無ければ(ゆにじゅ～るには)無いですね</Typography>
+                <Typography sx={{ fontSize: "0.75rem" }}>神白ななせさんの朝活を見たら、誰かの予定がわかるかも？</Typography>
+                <Typography sx={{ fontSize: "0.75rem" }}>もしくは各自のX(旧Twitter)にはあるかもしれません</Typography>
+              </Box>
+            )}
 
             <HeaderBox>明日以降の配信 / プレミア公開</HeaderBox>
             {/* 本日以降の配信、動画リスト */}
@@ -289,9 +322,6 @@ function App() {
               <Grid container spacing={4}>
                 {videoFutureList}
               </Grid>
-            </Box>
-            <Box my={1}>
-              <Divider></Divider>
             </Box>
 
             <HeaderBox sx={{ backgroundColor: "#F28020 !important" }}>過去7日分のアーカイブ / 動画</HeaderBox>

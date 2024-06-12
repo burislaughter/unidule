@@ -28,8 +28,11 @@ def getStartAt(item):
         else:
             if 'scheduledStartTime' in item['liveStreamingDetails']:
                 return item['liveStreamingDetails']['scheduledStartTime']
+            elif 'actualStartTime' in item['liveStreamingDetails']: # ゲリラ配信枠
+                return item['liveStreamingDetails']['actualStartTime']
+            elif 'publishedAt' in item['snippet']: # ゲリラ配信枠
+                return item['snippet']['publishedAt']
             else:
-                # 配信予定のない配信枠
                 ""
     
     except Exception as e:
