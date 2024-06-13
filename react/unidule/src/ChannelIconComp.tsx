@@ -3,14 +3,13 @@ import { Avatar, Box, Button, Typography } from "@mui/material";
 type channelIconProps = {
   channel: string;
   cb: any;
-  key: string;
   imgUrl: string;
   fullName: string;
   isSelected: boolean;
 };
 
 export function ChannelIconComp(props: channelIconProps) {
-  const { channel, cb, key, imgUrl, fullName, isSelected } = props;
+  const { channel, cb, imgUrl, fullName, isSelected } = props;
   const isFillter = isSelected ? "auto" : "sepia(1)";
   return (
     <Button
@@ -21,7 +20,7 @@ export function ChannelIconComp(props: channelIconProps) {
       }}
       sx={{ margin: 0, padding: 0, minWidth: "auto" }}
     >
-      <Box key={key} sx={{ width: "52px" }}>
+      <Box sx={{ width: "52px" }}>
         <Box sx={{ justifyContent: " space-evenly", display: "flex", marginRight: "3px" }}>
           <Avatar
             src={imgUrl}

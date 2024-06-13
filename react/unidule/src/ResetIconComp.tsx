@@ -4,11 +4,10 @@ import { FaArrowRotateLeft } from "react-icons/fa6";
 type resetIconProps = {
   channel: string;
   cb: any;
-  key: string;
 };
 
 export function ResetIconComp(props: resetIconProps) {
-  const { channel, cb, key } = props;
+  const { channel, cb } = props;
 
   return (
     <Button
@@ -19,7 +18,7 @@ export function ResetIconComp(props: resetIconProps) {
       }}
       sx={{ margin: 0, padding: 0, minWidth: "auto" }}
     >
-      <Box key={key} sx={{ marginLeft: "10px", marginRight: "10px", marginTop: "16px" }}>
+      <Box sx={{ marginLeft: "10px", marginRight: "10px", marginTop: "16px" }}>
         <Box sx={{ justifyContent: "space-evenly", display: "flex" }}>
           <FaArrowRotateLeft />
         </Box>

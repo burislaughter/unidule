@@ -1,21 +1,16 @@
-import * as React from "react";
 import Card from "@mui/material/Card";
-import CardActions from "@mui/material/CardActions";
 import CardContent from "@mui/material/CardContent";
 import CardMedia from "@mui/material/CardMedia";
-import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
-import { Box, CardActionArea, Link, colors } from "@mui/material";
+import { Avatar, Box, Link } from "@mui/material";
 import styled from "@emotion/styled";
 import { format } from "date-fns";
 import "./MediaCard.css";
-import { LazyLoadImage } from "react-lazy-load-image-component";
 
 type Props = {
   imgUrl: string;
   videoId: string;
   title: string;
-  channelTitle: string;
   description: string;
 
   startDateTime: string; // 実際の開始時間
@@ -23,6 +18,7 @@ type Props = {
   isTodayFinished: boolean; // 本日の終了した配信
   isTodayUpload: boolean; // 本日アップロードされた動画
   isToday: boolean; // 本日のもの
+  channelInfo: any;
 };
 
 const CardContentEx = styled(CardContent)`
@@ -37,7 +33,6 @@ export const MediaCard = ({
   imgUrl,
   videoId,
   title,
-  channelTitle,
   description,
 
   startDateTime,
@@ -45,6 +40,7 @@ export const MediaCard = ({
   isTodayFinished,
   isTodayUpload,
   isToday,
+  channelInfo,
 }: Props) => {
   let startDateStr = "";
   let startTimeStr = "";
@@ -74,7 +70,8 @@ export const MediaCard = ({
   }
 
   // ショート動画かどうか
-  const linkBaseUrl = title.indexOf("#shorts") == -1 ? "https://www.youtube.com/watch?v=" : "https://www.youtube.com/shorts/";
+  const youtubeUrl = "https://www.youtube.com/";
+  const linkBaseUrl = title.indexOf("#shorts") == -1 ? youtubeUrl + "watch?v=" : youtubeUrl + "shorts/";
 
   // 配信時間の表示スタイル
   const timeStyle =
@@ -89,38 +86,65 @@ export const MediaCard = ({
         };
 
   return (
-    <Card sx={{}} className={(status == "live" ? "Now-border" : "") + (isTodayFinished ? " Now-border finished" : "") + " Card-parent"}>
-      <Link target="_brank" href={linkBaseUrl + videoId}>
-        <CardMedia image={imgUrl} component="img" loading="lazy" />
-      </Link>
-      <CardContentEx>
-        <Typography variant="body2" gutterBottom component="div" sx={{ fontWeight: "bold" }}>
-          {title}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {channelTitle}
-        </Typography>
-
-        {startDateStr && ( // 配信済または動画
-          <Typography variant="body2" color="text.secondary">
-            {startDateStr}{" "}
-            <Typography component="span" sx={timeStyle}>
-              {startTimeStr}
-            </Typography>
-            {startDateTimeStateStr}
+    <Box sx={{ position: "relative" }}>
+      <Card className={(status == "live" ? "Now-border" : "") + (isTodayFinished ? " Now-border finished" : "") + " Card-parent"}>
+        <Link target="_brank" href={linkBaseUrl + videoId}>
+          <CardMedia image={imgUrl} component="img" loading="lazy" />
+          {/* <Box sx={{ justifyContent: " space-evenly", display: "flex", marginRight: "3px", position: "absolute", bottom: "6px", right: "0px" }}>
+          <Link target="_brank" href={youtubeUrl + "channel/" + channelInfo.id}>
+            <Avatar
+              src={channelInfo.snippet.thumbnails.default.url}
+              sx={{
+                width: 44,
+                height: 44,
+                boxShadow: 3,
+              }}
+            />
+          </Link>
+        </Box> */}
+        </Link>
+        <CardContentEx>
+          <Typography variant="body2" gutterBottom component="div" sx={{ fontWeight: "bold" }}>
+            {title}
           </Typography>
-        )}
+          <Typography variant="body2" color="text.secondary">
+            {channelInfo.snippet?.title}
+          </Typography>
 
-        {status == "live" && <Typography className="Now-icon">LIVE!</Typography>}
+          {startDateStr && ( // 配信済または動画
+            <Typography variant="body2" color="text.secondary">
+              {startDateStr}{" "}
+              <Typography component="span" sx={timeStyle}>
+                {startTimeStr}
+              </Typography>
+              {startDateTimeStateStr}
+            </Typography>
+          )}
 
-        {isTodayFinished && <Typography className="Now-icon finished">FINISHED</Typography>}
+          {status == "live" && <Typography className="Now-icon">LIVE!</Typography>}
 
-        {isTodayUpload && <Typography className="Now-icon upload">Release</Typography>}
-      </CardContentEx>
+          {isTodayFinished && <Typography className="Now-icon finished">FINISHED</Typography>}
 
-      <Box sx={{ paddingBottom: 1 }}>
-        <Typography className="description-area">{description}</Typography>
+          {isTodayUpload && <Typography className="Now-icon upload">Release</Typography>}
+        </CardContentEx>
+
+        <Box sx={{ paddingBottom: 1 }}>
+          <Typography className="description-area">{description}</Typography>
+        </Box>
+      </Card>
+
+      <Box sx={{ justifyContent: " space-evenly", display: "flex", marginRight: "3px", position: "absolute", top: "-12px", right: "-18px" }}>
+        <Link target="_brank" href={youtubeUrl + "channel/" + channelInfo.id}>
+          <Avatar
+            src={channelInfo.snippet.thumbnails.default.url}
+            sx={{
+              width: 44,
+              height: 44,
+              boxShadow: 3,
+            }}
+          />
+        </Link>
       </Box>
-    </Card>
+    </Box>
   );
 };

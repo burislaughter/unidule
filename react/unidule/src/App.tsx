@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import * as React from "react";
-import { Avatar, Box, Button, Divider, Grid, Link, Stack, Typography } from "@mui/material";
+import { Avatar, Backdrop, Box, Button, CircularProgress, Divider, Grid, Link, Stack, Typography } from "@mui/material";
 import styled from "@emotion/styled";
 import { ThemeProvider, css } from "@emotion/react";
 import axios from "axios";
@@ -11,16 +11,19 @@ import { ChannelIconComp } from "./ChannelIconComp";
 import { ResetIconComp } from "./ResetIconComp";
 import theme from "./theme";
 
+const buildDate = "2024.6.13";
+
 const objectStyle = css({
   padding: "10px",
   overflow: "hidden",
 });
 
 const HeaderBox = styled(Box)({
-  padding: 8,
+  paddingTop: 8,
+  paddingBottom: 8,
   marginTop: 4,
-  marginBottom: 4,
-  width: "99%",
+  marginBottom: 8,
+  width: "100%",
   color: "#FFFFFF",
   backgroundColor: "#1976d2",
   borderRadius: 2,
@@ -69,8 +72,11 @@ function App() {
   videoFutureLListRef.current = videoFutureListMaster;
   videoArchiveListRef.current = videoArchiveListMaster;
 
-  const VIDEO_LIST_URL = "https://api.unidule.jp/prd/video_list?channel=all";
-  const CHANNEL_INFO_URL = "https://api.unidule.jp/prd/channel_info";
+  const URL_BASE = "https://api.unidule.jp/prd/";
+  // const URL_BASE = "https://d1ezxt9xzove4q.cloudfront.net/dev/";
+
+  const VIDEO_LIST_URL = URL_BASE + "video_list?channel=all";
+  const CHANNEL_INFO_URL = URL_BASE + "channel_info";
 
   const [sortSelect, setSortSelect] = useState<Set<string>>(new Set([]));
 
@@ -80,10 +86,7 @@ function App() {
     const seasonsTodayList: React.SetStateAction<any[]> = [];
     const seasonsTodayFinishList: React.SetStateAction<any[]> = [];
 
-    console.log(sortSelect);
-
     v_lost.forEach((obj: any, index: number) => {
-      // 本日は04:00まで
       let isToday = false;
       let isTodayFinished = false;
       let isFuture = false;
@@ -127,17 +130,16 @@ function App() {
         const card = (
           <Grid item sm={4} md={3} lg={2} key={index + "-" + obj.channel}>
             <MediaCard
-              key={index}
               imgUrl={obj.snippet.thumbnails.maxres?.url ? obj.snippet.thumbnails.maxres?.url : obj.snippet.thumbnails.medium?.url}
               videoId={obj.id}
               title={obj.snippet?.title}
               description={obj.snippet?.description}
-              channelTitle={ci.snippet?.title}
               startDateTime={format(new Date(dt), "yyyy/MM/dd HH:mm")}
               status={obj.liveBroadcastContent}
               isTodayFinished={isTodayFinished}
               isTodayUpload={isTodayUpload}
               isToday={isToday}
+              channelInfo={ci}
             ></MediaCard>
           </Grid>
         );
@@ -254,14 +256,24 @@ function App() {
     };
   }, []);
 
+  const GodName = (): string => {
+    const r = Math.floor((Math.random() - 0.01) * 3);
+    const names = ["神白ななせさん", "GOD神白", "神ちゃん"];
+    return names[r];
+  };
+
   return (
     <>
+      <Backdrop sx={{ color: "#fff", zIndex: 1000 }} open={!isLoaded}>
+        <CircularProgress sx={{ color: "#FFC84F" }} size="8rem" />
+      </Backdrop>
+
       <div css={objectStyle}>
         <Typography align="center" fontFamily="'RocknRoll One'" mx={1} sx={{ fontSize: "14vw" }}>
           ゆにじゅ～る
         </Typography>
         <Typography sx={{ textAlign: "right" }}>[非公式]ファンメイドスケジューラー</Typography>
-        <Typography sx={{ textAlign: "right", fontSize: "0.75rem" }}>build 2024.06.12</Typography>
+        <Typography sx={{ textAlign: "right", fontSize: "0.75rem" }}>build {buildDate}</Typography>
         <Typography sx={{ textAlign: "right", fontSize: "0.75rem", marginBottom: "4px" }}>
           お問い合わせ <Link href="https://x.com/distant_zz">@distant_zz</Link>
         </Typography>
@@ -269,7 +281,7 @@ function App() {
         {isLoaded && (
           <>
             {/* チャンネル情報 */}
-            {(function () {
+            {(() => {
               const channelIconsList: any[] = [0, 0, 0, 0, 0, 0, 0, 0];
               for (let item of channelInfo) {
                 const idx = getOrder(item.channel);
@@ -277,7 +289,7 @@ function App() {
 
                 channelIconsList[idx] = (
                   <ChannelIconComp
-                    key={idx + "-" + item.channel}
+                    key={0 + "-" + item.channel}
                     channel={item.channel}
                     cb={fillterBtnClickCB}
                     imgUrl={item.snippet.thumbnails.default.url}
@@ -287,9 +299,21 @@ function App() {
                 );
               }
 
-              channelIconsList.push(<ResetIconComp key={0 + "-" + '"reset"'} channel={"reset"} cb={resetBtnClickCB}></ResetIconComp>);
+              channelIconsList.push(<ResetIconComp key={0 + "-" + "reset"} channel={"reset"} cb={resetBtnClickCB}></ResetIconComp>);
               return (
-                <Stack direction="row" sx={{ alignItems: "flex-start", marginTop: "6px", flexWrap: "wrap" }}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    alignItems: "flex-start",
+                    marginTop: "6px",
+                    flexWrap: "wrap",
+
+                    backgroundColor: "#f4f4f4",
+                    borderRadius: "8px",
+                    paddingTop: "8px",
+                    paddingLeft: "6px",
+                  }}
+                >
                   {channelIconsList}
                 </Stack>
               );
@@ -310,9 +334,11 @@ function App() {
             )}
             {videoTodayList.length == 0 && (
               <Box sx={{ minHeight: "140px" }}>
-                <Typography sx={{ fontSize: "0.75rem" }}>そこ(Youtube)に無ければ(ゆにじゅ～るには)無いですね</Typography>
-                <Typography sx={{ fontSize: "0.75rem" }}>神白ななせさんの朝活を見たら、誰かの予定がわかるかも？</Typography>
-                <Typography sx={{ fontSize: "0.75rem" }}>もしくは各自のX(旧Twitter)にはあるかもしれません</Typography>
+                <Box py={1} px={2}>
+                  <Typography sx={{ fontSize: "0.75rem" }}>そこ(Youtube)に無ければ(ゆにじゅ～るには)無いですね</Typography>
+                  <Typography sx={{ fontSize: "0.75rem" }}>{GodName()}の朝活を見たら、誰かの予定がわかるかも？</Typography>
+                  <Typography sx={{ fontSize: "0.75rem" }}>もしくは各自のX(旧Twitter)にはあるかもしれません</Typography>
+                </Box>
               </Box>
             )}
 
