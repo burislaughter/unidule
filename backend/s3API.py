@@ -2,7 +2,7 @@ import json
 
 # s3 = boto3.resource('s3')
 
-
+BUCKET_NAME = 'unidule-input'
 ####################################################
 # スケジュールの開始日時の取得
 # item ... 

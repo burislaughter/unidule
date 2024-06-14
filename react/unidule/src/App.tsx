@@ -6,7 +6,7 @@ import { ThemeProvider, css } from "@emotion/react";
 import axios from "axios";
 import { MediaCard } from "./MediaCard";
 import { format, parse, addDays, subDays, startOfDay, addHours, subHours, compareAsc, compareDesc } from "date-fns";
-import { channelParams } from "./const";
+import { URL_BASE, channelParams } from "./const";
 import { ChannelIconComp } from "./ChannelIconComp";
 import { ResetIconComp } from "./ResetIconComp";
 import theme from "./theme";
@@ -72,21 +72,18 @@ function App() {
   videoFutureLListRef.current = videoFutureListMaster;
   videoArchiveListRef.current = videoArchiveListMaster;
 
-  const URL_BASE = "https://api.unidule.jp/prd/";
-  // const URL_BASE = "https://d1ezxt9xzove4q.cloudfront.net/dev/";
-
   const VIDEO_LIST_URL = URL_BASE + "video_list?channel=all";
   const CHANNEL_INFO_URL = URL_BASE + "channel_info";
 
   const [sortSelect, setSortSelect] = useState<Set<string>>(new Set([]));
 
-  const createSukedule = (ci_list: any, v_lost: any[]) => {
+  const createSukedule = (ci_list: any, v_list: any[]) => {
     const archiveListMaster: React.SetStateAction<any[]> = [];
     const futureListMaster: React.SetStateAction<any[]> = [];
     const seasonsTodayList: React.SetStateAction<any[]> = [];
     const seasonsTodayFinishList: React.SetStateAction<any[]> = [];
 
-    v_lost.forEach((obj: any, index: number) => {
+    v_list.forEach((obj: any, index: number) => {
       let isToday = false;
       let isTodayFinished = false;
       let isFuture = false;
@@ -104,24 +101,30 @@ function App() {
         const startDt = addHours(startOfDay(addDays(now, ofsDay)), 4); // 本日の午前4時を取得
         const endDt = addDays(startDt, 1); // 本日の午前4時に1日を加算して本日の終わりを取得
 
-        let dt = new Date(obj.startAt);
-
-        if (startDt.getTime() > dt.getTime()) {
-          // 過去
-          isArchive = true;
-        } else if (endDt.getTime() < dt.getTime()) {
-          // 未来
+        let dt_str = "";
+        if (obj.startAt.indexOf("未定") == 0) {
+          dt_str = "未定";
           isFuture = true;
-        } else if (obj.liveBroadcastContent == "none" && obj.liveStreamingDetails != undefined) {
-          // 本日の終了分
-          dt = new Date(obj.liveStreamingDetails.actualEndTime);
-          isTodayFinished = true;
-        } else if (obj.liveStreamingDetails == undefined) {
-          // 本日アップロードされた動画
-          isTodayUpload = true;
         } else {
-          // 本日
-          isToday = true;
+          const dt = new Date(obj.startAt);
+          dt_str = format(new Date(dt), "yyyy/MM/dd HH:mm");
+          if (startDt.getTime() > dt.getTime()) {
+            // 過去
+            isArchive = true;
+          } else if (endDt.getTime() < dt.getTime()) {
+            // 未来
+            isFuture = true;
+          } else if (obj.liveBroadcastContent == "none" && obj.liveStreamingDetails != undefined) {
+            // 本日の終了分
+            dt_str = format(new Date(new Date(obj.liveStreamingDetails.actualEndTime)), "yyyy/MM/dd HH:mm");
+            isTodayFinished = true;
+          } else if (obj.liveStreamingDetails == undefined) {
+            // 本日アップロードされた動画
+            isTodayUpload = true;
+          } else {
+            // 本日
+            isToday = true;
+          }
         }
 
         // 動画とチャンネル情報の照合
@@ -134,7 +137,7 @@ function App() {
               videoId={obj.id}
               title={obj.snippet?.title}
               description={obj.snippet?.description}
-              startDateTime={format(new Date(dt), "yyyy/MM/dd HH:mm")}
+              startDateTime={dt_str}
               status={obj.liveBroadcastContent}
               isTodayFinished={isTodayFinished}
               isTodayUpload={isTodayUpload}
@@ -204,7 +207,6 @@ function App() {
   useEffect(() => {
     const controller = new AbortController();
 
-    axios.defaults.baseURL = "https://api.unidule.jp/";
     axios.defaults.headers.post["Content-Type"] = "application/json;charset=utf-8";
     axios.defaults.headers.post["Access-Control-Allow-Origin"] = "*";
 
@@ -229,10 +231,19 @@ function App() {
 
       const { data: v_data, status: v_status } = values[1];
       const tmp_v_date = v_data.filter((item: any) => {
+        if (item.startAt.indexOf("未定") == 0) {
+          return true;
+        }
         const t1 = new Date(item.startAt);
         const t2 = subDays(new Date(), 7);
         return t1 > t2;
       });
+
+      for (let item of v_data) {
+        if (item.id == "AeHrOpahLLU") {
+          console.log();
+        }
+      }
 
       // 取得した動画一覧をリストに格納
       const { archiveListMaster, futureListMaster, todayListMaster } = createSukedule(ci_data, tmp_v_date);
@@ -263,12 +274,12 @@ function App() {
   };
 
   return (
-    <>
+    <Box sx={{ background: "linear-gradient(135deg, #FFF6F3,#E7FDFF)" }}>
       <Backdrop sx={{ color: "#fff", zIndex: 1000 }} open={!isLoaded}>
         <CircularProgress sx={{ color: "#FFC84F" }} size="8rem" />
       </Backdrop>
 
-      <div css={objectStyle}>
+      <Box sx={{ padding: "10px", overflow: "hidden", minHeight: "100vh" }}>
         <Typography align="center" fontFamily="'RocknRoll One'" mx={1} sx={{ fontSize: "14vw" }}>
           ゆにじゅ～る
         </Typography>
@@ -308,7 +319,7 @@ function App() {
                     marginTop: "6px",
                     flexWrap: "wrap",
 
-                    backgroundColor: "#f4f4f4",
+                    backgroundColor: "#f0f0f4",
                     borderRadius: "8px",
                     paddingTop: "8px",
                     paddingLeft: "6px",
@@ -323,7 +334,7 @@ function App() {
               <Divider></Divider>
             </Box>
 
-            <HeaderBox sx={{ backgroundColor: "#00C070 !important" }}>本日の配信</HeaderBox>
+            <HeaderBox sx={{ backgroundColor: "#00C070 !important" }}>本日の配信 ～04:00まで</HeaderBox>
             {/* 本日の配信、動画リスト */}
             {videoTodayList.length != 0 && (
               <Box sx={{ flexGrow: 1, width: "100%", margin: "0px auto", minHeight: "40px" }}>
@@ -359,8 +370,8 @@ function App() {
             </Box>
           </>
         )}
-      </div>
-    </>
+      </Box>
+    </Box>
   );
 }
 

@@ -1,5 +1,11 @@
 export type UniMen = Record<string, { uid: string; name: string; order: number }>;
 
+// APIエンドポイント
+// 本番
+export const URL_BASE = "https://api.unidule.jp/prd/";
+// Dev
+// export const URL_BASE = "https://d1ezxt9xzove4q.cloudfront.net/dev/";
+
 export const channelParams: UniMen = {
   nanase: { uid: "UCFfKS52xZaus6HunxP3Owsw", name: "神白 ななせ", order: 0 },
   nagisa: { uid: "UCe5mbpYA9Yym4lZTdj06G6Q", name: "氷乃 渚", order: 1 },

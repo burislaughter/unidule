@@ -5,7 +5,7 @@ import boto3
 from boto3.dynamodb.conditions import Key, Attr
 import json
 from decimal import Decimal
-from util import owner_to_cid, owner_to_pid
+from util import owner_to_cid, owner_to_pid, channelParams
 import youtubeAPI
 from googleapiclient.discovery import build
 import pandas as pd
@@ -24,16 +24,17 @@ def getStartAt(item):
             # 配信が終わったものは配信予定の日時のままにする
             if 'liveStreamingDetails' in item and 'scheduledStartTime' in item['liveStreamingDetails']:
                 return item['liveStreamingDetails']['scheduledStartTime']
+            if 'liveStreamingDetails' in item and 'actualStartTime' in item['liveStreamingDetails']:
+                return item['liveStreamingDetails']['actualStartTime']
             return item['snippet']['publishedAt']
-        else:
+        else:  # live or upcoming           
             if 'scheduledStartTime' in item['liveStreamingDetails']:
                 return item['liveStreamingDetails']['scheduledStartTime']
             elif 'actualStartTime' in item['liveStreamingDetails']: # ゲリラ配信枠
                 return item['liveStreamingDetails']['actualStartTime']
-            elif 'publishedAt' in item['snippet']: # ゲリラ配信枠
-                return item['snippet']['publishedAt']
             else:
-                ""
+                return '未定-' + item['id']  # 枠だけ立って予定がない
+
     
     except Exception as e:
         print('getStartAt エラー')
@@ -363,6 +364,30 @@ def lambda_handler(event, context):
 
         return {
             'statusCode': 203,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+            },
+            'body': "OK"
+        }
+    elif exec_mode == 'UPDATE_VIDEO_LIST_ALL':  # 全てのユニメンチャンネル
+        is_force = event['force'] if 'force' in event else ""
+        
+        for (own , c_id, p_id ) in channelParams:
+            if not own == 'uniraid' and not own == 'uniraid_cut':
+                # Youtubeから動画情報の取得
+                v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'],os.environ['DYNAMO_DB_IDS_TABLE'], own, is_force)
+
+                if len(v_list) != 0:
+                    # 動画情報をDynamoDBに入れる
+                    table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+                    importVideoListDocument(v_list, table, own)
+
+                    print('lambda finish',event,own)
+
+        return {
+            'statusCode': 201,
             'headers': {
                 "Access-Control-Allow-Headers": "Content-Type",
                 "Access-Control-Allow-Origin": '*',

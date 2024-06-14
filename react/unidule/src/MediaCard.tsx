@@ -46,27 +46,31 @@ export const MediaCard = ({
   let startTimeStr = "";
   let startDateTimeStateStr = "";
 
-  startDateStr = format(new Date(startDateTime), "yyyy/MM/dd");
-  startTimeStr = format(new Date(startDateTime), "HH:mm");
-
-  if (status == "upcoming") {
-    // 配信予定
-    startDateTimeStateStr = " に配信予定";
-  } else if (status == "live") {
-    // 配信中
-    startDateTimeStateStr = " から配信中";
-  } else if (isTodayFinished) {
-    startDateTimeStateStr = " に配信終了";
-  } else if (isTodayUpload) {
-    startDateTimeStateStr = " に公開";
-  } else if (status == "none") {
-    startDateTimeStateStr = " に配信";
+  if (startDateTime.indexOf("未定") == 0) {
+    startDateStr = "未定";
   } else {
-    startDateTimeStateStr = " に公開";
-  }
+    startDateStr = format(new Date(startDateTime), "yyyy/MM/dd");
+    startTimeStr = format(new Date(startDateTime), "HH:mm");
 
-  if (isToday || isTodayUpload) {
-    startDateStr = format(new Date(startDateTime), "M月dd日");
+    if (status == "upcoming") {
+      // 配信予定
+      startDateTimeStateStr = " に配信予定";
+    } else if (status == "live") {
+      // 配信中
+      startDateTimeStateStr = " から配信中";
+    } else if (isTodayFinished) {
+      startDateTimeStateStr = " に配信終了";
+    } else if (isTodayUpload) {
+      startDateTimeStateStr = " に公開";
+    } else if (status == "none") {
+      startDateTimeStateStr = " に配信";
+    } else {
+      startDateTimeStateStr = " に公開";
+    }
+
+    if (isToday || isTodayUpload) {
+      startDateStr = format(new Date(startDateTime), "M月dd日");
+    }
   }
 
   // ショート動画かどうか
@@ -77,12 +81,12 @@ export const MediaCard = ({
   const timeStyle =
     status == "live" || status == "upcoming"
       ? {
-          fontSize: "0.875rem",
+          fontSize: "1rem",
           color: "#000",
           fontWeight: 700,
         }
       : {
-          fontSize: "0.875rem",
+          fontSize: "1rem",
         };
 
   return (
@@ -90,18 +94,6 @@ export const MediaCard = ({
       <Card className={(status == "live" ? "Now-border" : "") + (isTodayFinished ? " Now-border finished" : "") + " Card-parent"}>
         <Link target="_brank" href={linkBaseUrl + videoId}>
           <CardMedia image={imgUrl} component="img" loading="lazy" />
-          {/* <Box sx={{ justifyContent: " space-evenly", display: "flex", marginRight: "3px", position: "absolute", bottom: "6px", right: "0px" }}>
-          <Link target="_brank" href={youtubeUrl + "channel/" + channelInfo.id}>
-            <Avatar
-              src={channelInfo.snippet.thumbnails.default.url}
-              sx={{
-                width: 44,
-                height: 44,
-                boxShadow: 3,
-              }}
-            />
-          </Link>
-        </Box> */}
         </Link>
         <CardContentEx>
           <Typography variant="body2" gutterBottom component="div" sx={{ fontWeight: "bold" }}>
@@ -113,14 +105,15 @@ export const MediaCard = ({
 
           {startDateStr && ( // 配信済または動画
             <Typography variant="body2" color="text.secondary">
-              {startDateStr}{" "}
+              <Typography component="span" sx={{ marginRight: "2px", fontSize: "0.875rem" }}>
+                {startDateStr}
+              </Typography>
               <Typography component="span" sx={timeStyle}>
                 {startTimeStr}
               </Typography>
               {startDateTimeStateStr}
             </Typography>
           )}
-
           {status == "live" && <Typography className="Now-icon">LIVE!</Typography>}
 
           {isTodayFinished && <Typography className="Now-icon finished">FINISHED</Typography>}

@@ -17,11 +17,13 @@ event = {}
 
 
 # event['exec_mode'] = 'UPDATE_VIDEO_ONE'
-event['exec_mode'] = 'UPDATE_VIDEO_LIST'
+# event['exec_mode'] = 'UPDATE_VIDEO_LIST'
 # event['exec_mode'] = 'UPDATE_CHANNEL_INFO'
-event['channel'] = 'ran'
-
-event['force'] = True
+event['exec_mode'] = 'UPDATE_VIDEO_LIST_ALL'
+event['channel'] = 'all'
+# event['channel'] = 'all'
+event['force'] = False
+# event['force'] = False
 
 
 # event['video_id'] = 'Jb2yfMZZAp4'
