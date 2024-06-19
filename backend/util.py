@@ -3,7 +3,9 @@ from decimal import Decimal
 PATH_PARAMETER_CHANNEL_INFO = '/channel_info'
 PATH_PARAMETER_VIDEO_LIST = '/video_list'
 PATH_PARAMETER_VIDEO = '/video'
-
+PATH_PARAMETER_VIDEO_FORCE_UPDATE = '/video_force_update'
+PATH_PARAMETER_AUTH = '/auth'
+PATH_PARAMETER_SCHEDULE_TWEET = '/schedule_tweet'
 
 # チャンネル情報の定数
 # チャンネルオーナー、チャンネルID、新着動画プレイリストID

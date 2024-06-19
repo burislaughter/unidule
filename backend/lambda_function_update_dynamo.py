@@ -66,8 +66,8 @@ def getVideoListFromYT(devKey, table, channel_owner,is_force):
 
     # 全てを対象とする場合
     if is_force:
+        # 動画詳細を取得
         return  youtubeAPI.get_video_items(v_id_list, youtube )
-
 
     ids = getVideoIdsDocument(table)
 
@@ -77,12 +77,18 @@ def getVideoListFromYT(devKey, table, channel_owner,is_force):
 
     diff = youtube_pd[~youtube_pd['id'].isin(dynamo_pd['id'])]
 
-    # 配信ステータスが live または upcoming の物を取得し更新対象とする
+    # DynamoDBの中で配信ステータスが live または upcoming の物を取得し更新対象とする
     diff_ids = liveStatusIds(os.environ['DYNAMO_DB_VIDEO_LIST_TABLE'], channel_owner)
+
+    # そのチャンネルの中で
 
     # ID配列に変換
     for index, row in diff.iterrows():
         diff_ids.append(row.id)
+
+    # 更新漏れがあるので、保険で配信中の物を書き込む
+    tmp = youtubeAPI.get_video_items(v_id_list[0:10], youtube )
+    append = liveStatusVIdeos(tmp)
 
 
     # 新着が0件なら処理しない
@@ -90,10 +96,11 @@ def getVideoListFromYT(devKey, table, channel_owner,is_force):
         importVideoIdsDocument(diff_ids, channel_owner, table)
         ret =  youtubeAPI.get_video_items(diff_ids, youtube )        
         print('getVideoListFromYT finish')
-        return ret
+        return ret + append
     
+    # 0件の時に
     print("Update 0")
-    return []
+    return append
 
 
 
@@ -126,6 +133,9 @@ def getChannelInfoFromYT(devKey, channel_owner):
 def importVideoListDocument(v_list, table, channel_owner):
     print('importVideoListDocument start')
 
+    # 重複していた場合に削除
+    v_list = pd.DataFrame({'id':v_list}).drop_duplicates()['id'].values.tolist()
+
     # dynamoDBで検索する用の情報を付随する
     table = dynamodb.Table(table)
     try:
@@ -149,11 +159,15 @@ def importVideoListDocument(v_list, table, channel_owner):
                 # 配信予定のない枠だけを取得した場合
                 if startAt:
                     item['startAt'] = startAt
+                    print("[writeing]: " + item['id'])
                     batch.put_item(Item=item)
 
     except Exception as e:
         print('dynamodb import エラー')
         print(e)
+
+
+
 
     print('importVideoListDocument finish')
 
@@ -268,7 +282,19 @@ def liveStatusIds(table, channel_owner):
     return ids
     
 
+################################################################################################
+# 配信中または配信予定の動画をリストから探す
+#################################################################################################
+def liveStatusVIdeos(v_list):
+    lists = []
+    for item in v_list:
 
+        # 配信ステータスを平滑化
+        if item['snippet']['liveBroadcastContent'] == 'live' or item['snippet']['liveBroadcastContent'] == 'upcoming':
+            lists.append(item)
+
+    return lists
+    
 
 
 ################################################################################################
@@ -328,7 +354,7 @@ def lambda_handler(event, context):
             'body': "OK"
         }
     
-    elif exec_mode == 'DELETE_VIDEO':
+    elif exec_mode == 'DELETE_VIDEO':  # 物理削除
         id = event['queryStringParameters']['video_id']
         table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
         table = dynamodb.Table(table)
