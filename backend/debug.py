@@ -4,7 +4,7 @@ from lambda_function_query_dynamo import lambda_handler as lambda_handler_query_
 from lambda_function_update_dynamo import lambda_handler as lambda_handler_update_dynamo
 from lambda_function_webhook import lambda_handler as lambda_function_webhook
 
-from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE, PATH_PARAMETER_VIDEO_LIST
+from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE, PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_YOUTUBE_VIDEO
 
 
 
@@ -35,23 +35,31 @@ event = {}
 # UPDATE_VIDEO_LIST  ... 動画リストのDynamoDBを更新
 # UPDATE_CHANNEL_INFO ...  チャンネル情報のDynamoDBを更新
 # DELETE_VIDEO
-event['auth'] = {}
-event['queryStringParameters'] = {}
+# event['auth'] = {}
+# event['queryStringParameters'] = {}
 # event['path'] = PATH_PARAMETER_VIDEO_LIST
 # event['path'] = PATH_PARAMETER_VIDEO
 # event['path'] = PATH_PARAMETER_VIDEO_FORCE_UPDATE
-event['path'] = PATH_PARAMETER_SCHEDULE_TWEET
+# event['path'] = PATH_PARAMETER_SCHEDULE_TWEET
 
 # event['queryStringParameters']['channel'] = 'nagisa'
 # event['queryStringParameters']['id'] = 'uqVkIwgk0-4'
-event['httpMethod'] = 'GET'
+# event['httpMethod'] = 'GET'
 # event['httpMethod'] = 'DELETE'
  
 # event['path'] = PATH_PARAMETER_AUTH
 
-# event['httpMethod'] = 'GET'
-# event['headers'] = {}
-# event['headers']['authorization'] = "Basic YWRtaW46I2RDWjNqQSpEL2kk"
+event['httpMethod'] = 'POST'
+event['path'] = PATH_PARAMETER_YOUTUBE_VIDEO
+event['queryStringParameters'] = {}
+event['queryStringParameters']['video_id'] = 'bZrV33y2kmQ'
 
 lambda_handler_query_dynamo(event,None)
+
+# # VideoID指定でInsert
+# event['exec_mode'] = 'INSERT_VIDEO_ONE'
+# event['queryStringParameters'] = {}
+# event['queryStringParameters']['video_id'] = 'bZrV33y2kmQ'
+# lambda_handler_update_dynamo(event,None)
+
 

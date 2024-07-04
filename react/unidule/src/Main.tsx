@@ -14,8 +14,9 @@ import TabPanel from "@mui/lab/TabPanel";
 import ChannelFillter from "./ChannelFillter";
 import { makeStyles } from "@material-ui/core";
 import { Summary } from "./Summary";
+import { ReadMe } from "./ReadMe";
 
-const buildDate = "2024.6.20";
+const buildDate = "2024.7.3";
 
 const HeaderBox = styled(Box)({
   paddingTop: 8,
@@ -35,8 +36,16 @@ const TabPanelEx = styled(TabPanel)({
   padding: 0,
 });
 
-export const getChannelInfo = (cis: any[], channel: string): any => {
-  const cid = channelParams[channel];
+export const getChannelInfo = (cis: any[], item: any): any => {
+  const cid = channelParams[item.channel];
+
+  if (cid.uid === "") {
+    return {
+      id: item.snippet.channelId,
+      snippet: item.snippet.channelInfo?.snippet,
+    };
+  }
+
   return cis.find((x) => x.id == cid.uid);
 };
 
@@ -120,8 +129,10 @@ function Main() {
 
         let dt_str = "";
         if (obj.startAt.indexOf("未定") == 0) {
-          dt_str = "未定";
-          isFuture = true;
+          // dt_str = "未定";
+          // isFuture = true;
+          // 未定は表示しない
+          return;
         } else {
           const dt = new Date(obj.startAt);
           dt_str = format(new Date(dt), "yyyy/MM/dd HH:mm");
@@ -145,7 +156,8 @@ function Main() {
         }
 
         // 動画とチャンネル情報の照合
-        const ci = getChannelInfo(ci_list, obj.channel);
+        // UCcq3DnobBkRca4p8pntDntg
+        const ci = getChannelInfo(ci_list, obj);
 
         const card = (
           <Grid item sm={4} md={3} lg={2} key={index + "-" + obj.channel}>
@@ -329,6 +341,7 @@ function Main() {
                 <TabList onChange={onChangeTab} aria-label="チャンネルフィルター">
                   <Tab label="FILLTER" value="1" />
                   <Tab label="SUMMARY" value="2" />
+                  <Tab label="READ ME" value="3" />
                 </TabList>
               </Box>
               <TabPanelEx value="1">
@@ -336,7 +349,12 @@ function Main() {
                 <ChannelFillter channelInfo={channelInfo} fillterBtnClickCB={fillterBtnClickCB} sortSelect={sortSelect} resetBtnClickCB={resetBtnClickCB} />
               </TabPanelEx>
               <TabPanelEx value="2">
+                {/* サマリー */}
                 <Summary channelInfo={channelInfo} />
+              </TabPanelEx>
+              <TabPanelEx value="3">
+                {/* サマリー */}
+                <ReadMe />
               </TabPanelEx>
             </TabContext>
 

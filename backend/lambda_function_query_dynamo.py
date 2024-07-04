@@ -6,7 +6,7 @@ from googleapiclient.discovery import build
 from boto3.dynamodb.conditions import Key, Attr
 import json
 from lambda_function_update_dynamo import importVideoListDocument
-from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST
+from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_YOUTUBE_VIDEO
 from util import decimal_default_proc
 import youtubeAPI
 import datetime
@@ -150,6 +150,26 @@ def getScheduleTweetDocument(table):
 
     
 
+################################################################################################
+# 動画ID指定でYoutubeから動画情報を取得
+#################################################################################################
+def getVideoItem(v_list, devKey):
+    # youtube クライアントの作成
+    youtube = build("youtube", "v3", developerKey = devKey)
+    
+    return youtubeAPI.get_video_items(v_list, youtube )
+
+
+################################################################################################
+# 動画情報にチャンネル情報を付随させる
+#################################################################################################
+def extendChannelInfo(item, devKey):
+    youtube = build("youtube", "v3", developerKey = devKey)
+    ci = youtubeAPI.get_channel_info(youtube, item['snippet']['channelId'])
+    item['snippet']['channelInfo'] = ci[0]
+    return item
+
+
 
 ################################################################################################
 # Lambdaヘッダー
@@ -270,7 +290,7 @@ def lambda_handler(event, context):
             'body': "OK"
         }
     
-    elif pathParam == PATH_PARAMETER_AUTH:  # Youtubeから特定IDの動画を取り直す
+    elif pathParam == PATH_PARAMETER_AUTH:  # 管理画面ログイン
         print(event)
         headers = event['headers']
         
@@ -314,5 +334,31 @@ def lambda_handler(event, context):
                 },
                 'body': json.dumps(resurt, default=decimal_default_proc, ensure_ascii=False)
             }           
+
+    # elif pathParam == PATH_PARAMETER_YOUTUBE_VIDEO:  # ビデオID直指定
+    elif pathParam == PATH_PARAMETER_VIDEO and httpMethod == "POST":    # ビデオID直指定
+        print('ビデオID直指定')
+        
+        own = 'other'  # その他のチャンネルに登録
+        video_id = event['queryStringParameters']['video_id']
+
+        # Youtubeから動画情報の取得
+        # 動画情報をDynamoDBに入れる
+        items = getVideoItem([video_id], os.environ['YOUTUBE_API_KEY'])
+        items[0] = extendChannelInfo(items[0], os.environ['YOUTUBE_API_KEY'])
+        table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        importVideoListDocument(items, table, own)
+
+        print('lambda finish',event,own)
+
+        return {
+            'statusCode': 200,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT"
+            },
+            'body': "OK"
+        }
 
 

@@ -297,6 +297,7 @@ def liveStatusVIdeos(v_list):
     
 
 
+
 ################################################################################################
 # Lambdaヘッダー
 #################################################################################################
@@ -309,11 +310,10 @@ def lambda_handler(event, context):
     # GET_VIDEO_LIST ... DynamoDBから取得
     exec_mode = event['exec_mode']
 
-    # maru ... 花ノ木まる
-    channel_owner = event['channel']
-
-
     if exec_mode == 'UPDATE_VIDEO_LIST':
+        # maru ... 花ノ木まる
+        channel_owner = event['channel']
+
         is_force = event['force'] if 'force' in event else ""
 
         # Youtubeから動画情報の取得
@@ -337,6 +337,7 @@ def lambda_handler(event, context):
         }
 
     elif exec_mode == 'UPDATE_CHANNEL_INFO':  
+        channel_owner = event['channel']
         # ユニークIDで検索したときも配列で帰って来る
         channel_info = getChannelInfoFromYT(os.environ['YOUTUBE_API_KEY'], channel_owner)
         table = os.environ['DYNAMO_DB_CHANNEL_INFO_TABLE']
@@ -355,6 +356,7 @@ def lambda_handler(event, context):
         }
     
     elif exec_mode == 'DELETE_VIDEO':  # 物理削除
+        channel_owner = event['channel']
         id = event['queryStringParameters']['video_id']
         table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
         table = dynamodb.Table(table)
@@ -373,7 +375,7 @@ def lambda_handler(event, context):
 
     elif exec_mode == 'UPDATE_VIDEO_ONE': # デバッグ用
 
-        id = 'Jb2yfMZZAp4'
+        id = event['queryStringParameters']['video_id']
         table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
         table = dynamodb.Table(table)
         responce = table.get_item(

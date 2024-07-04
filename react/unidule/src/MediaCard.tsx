@@ -91,7 +91,7 @@ export const MediaCard = ({
 
   return (
     <Box sx={{ position: "relative" }}>
-      <Card className={(status == "live" ? "Now-border" : "") + (isTodayFinished ? " Now-border finished" : "") + " Card-parent"}>
+      <Card className={(status == "live" ? "Now-border" : "") + (isTodayFinished ? " Now-border finished" : "") + (status == "upcoming" && isToday ? " Now-border upcoming" : "") + " Card-parent"}>
         <Link target="_brank" href={linkBaseUrl + videoId}>
           <CardMedia image={imgUrl} component="img" loading="lazy" />
         </Link>
@@ -100,7 +100,7 @@ export const MediaCard = ({
             {title}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {channelInfo.snippet?.title}
+            {channelInfo?.snippet?.title}
           </Typography>
 
           {startDateStr && ( // 配信済または動画
@@ -127,9 +127,9 @@ export const MediaCard = ({
       </Card>
 
       <Box sx={{ justifyContent: " space-evenly", display: "flex", marginRight: "3px", position: "absolute", top: "-12px", right: "-18px" }}>
-        <Link target="_brank" href={youtubeUrl + "channel/" + channelInfo.id}>
+        <Link target="_brank" href={youtubeUrl + "channel/" + channelInfo?.id}>
           <Avatar
-            src={channelInfo.snippet.thumbnails.default.url}
+            src={channelInfo?.snippet?.thumbnails?.default?.url}
             sx={{
               width: 44,
               height: 44,

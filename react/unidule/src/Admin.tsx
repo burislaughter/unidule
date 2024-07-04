@@ -11,6 +11,7 @@ import { log } from "console";
 const VIDEO_ONE_URL = URL_BASE + "video";
 const AUTH_URL = URL_BASE + "auth";
 const VIDEO_FORCE_UPDATE = URL_BASE + "video_force_update";
+const YOUTUBE_VIDEO_URL = URL_BASE + "video";
 
 type loginCredentials = {
   userName: string;
@@ -31,7 +32,7 @@ function Admin() {
   axios.defaults.headers.post["Content-Type"] = "application/json;charset=utf-8";
   axios.defaults.headers.post["Access-Control-Allow-Origin"] = "*";
 
-  // フィルターリセット
+  // DynamoDBから検索
   const loadVideoInfo = useCallback(() => {
     const controller = new AbortController();
 
@@ -53,6 +54,41 @@ function Admin() {
       })
       .catch((error) => {
         // エラーハンドリング
+      });
+  }, [videoId]);
+
+  // Youtubeから検索
+  const getYoutubeVideoInfo = useCallback(() => {
+    const controller = new AbortController();
+
+    axios.defaults.headers.post["Content-Type"] = "application/json;charset=utf-8";
+    axios.defaults.headers.post["Access-Control-Allow-Origin"] = "*";
+
+    const axiosInstance = axios.create({
+      withCredentials: false,
+
+      headers: {
+        // "Cache-Control": "no-cache",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "x-api-key": apiKey,
+      },
+    });
+
+    const url = YOUTUBE_VIDEO_URL + "?video_id=" + videoId;
+    axiosInstance
+      .put(url, {
+        data: {
+          videoId: videoId,
+        },
+      })
+      .then((response) => {
+        // 動画IDで検索した場合は一つ有効
+        // setVideoInfo(response.data[0]);
+        console.log("Post OK");
+      })
+      .catch((error) => {
+        // エラーハンドリング
+        console.log("Post NG");
       });
   }, [videoId]);
 
@@ -130,7 +166,7 @@ function Admin() {
     axiosInstance
       .get(url)
       .then((response) => {
-        // 動画IDで検索した場合は一つ有効
+        // ログイン成功時にAPIキー払い出し
         setApiKey(response.data);
       })
       .catch((error) => {
@@ -214,6 +250,10 @@ function Admin() {
           <Button variant="contained" onClick={loadVideoInfo}>
             検索
           </Button>
+          <Button variant="contained" onClick={getYoutubeVideoInfo}>
+            Youtube検索
+          </Button>
+
           <Button variant="contained" onClick={deleteVideoInfo}>
             論理削除
           </Button>

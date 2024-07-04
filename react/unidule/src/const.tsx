@@ -15,4 +15,5 @@ export const channelParams: UniMen = {
   ida: { uid: "UC7Ft50QAmUGWE6-ZfrHOG5Q", name: "扇名 いだ", twitter: "ouginaida", order: 5, type: "member", birthday: "11/15", debut: "04/20" },
   uniraid: { uid: "UCKofJjNEmQ3LwERp3pRVxtw", name: "ゆにれいど！", twitter: "Uniraid_VTuber", order: 6, type: "staff", birthday: "", debut: "" },
   uniraid_cut: { uid: "UCohnUVLcGInaC0l-2A95I5A", name: "公式 切り抜き", twitter: "", order: 7, type: "staff", birthday: "", debut: "" },
+  other: { uid: "", name: "外部コラボ", twitter: "", order: 8, type: "ohter", birthday: "", debut: "" },
 };

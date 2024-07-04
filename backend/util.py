@@ -6,6 +6,7 @@ PATH_PARAMETER_VIDEO = '/video'
 PATH_PARAMETER_VIDEO_FORCE_UPDATE = '/video_force_update'
 PATH_PARAMETER_AUTH = '/auth'
 PATH_PARAMETER_SCHEDULE_TWEET = '/schedule_tweet'
+PATH_PARAMETER_YOUTUBE_VIDEO = '/youtube_video'
 
 # チャンネル情報の定数
 # チャンネルオーナー、チャンネルID、新着動画プレイリストID
@@ -19,7 +20,9 @@ channelParams = [
     ('roman','UCbdOhaCW0Ti1qVCb9PKvmxg','UUbdOhaCW0Ti1qVCb9PKvmxg'),
 
     ('uniraid','UCKofJjNEmQ3LwERp3pRVxtw','UUKofJjNEmQ3LwERp3pRVxtw'),
-    ('uniraid_cut','UCohnUVLcGInaC0l-2A95I5A','UUohnUVLcGInaC0l-2A95I5A')
+    ('uniraid_cut','UCohnUVLcGInaC0l-2A95I5A','UUohnUVLcGInaC0l-2A95I5A'),
+
+    ('other','','')  # その他の他枠の動画情報のみを持つ物
 
 ]
 

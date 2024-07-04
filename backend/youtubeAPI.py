@@ -21,7 +21,7 @@ def get_video_items(video_id_list, youtube):
         request = youtube.videos().list(
             part="snippet,statistics,liveStreamingDetails",
             id=video_ids,
-            fields="items(id,snippet(title,description,liveBroadcastContent,publishedAt,thumbnails),statistics(viewCount,likeCount),liveStreamingDetails(scheduledStartTime,scheduledEndTime,scheduledEndTime,actualStartTime,actualEndTime))"
+            fields="items(id,snippet(title,channelId,description,liveBroadcastContent,publishedAt,thumbnails),statistics(viewCount,likeCount),liveStreamingDetails(scheduledStartTime,scheduledEndTime,scheduledEndTime,actualStartTime,actualEndTime))"
         )
         response = request.execute()
         video_items.extend(response["items"])

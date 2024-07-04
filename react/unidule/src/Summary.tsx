@@ -10,6 +10,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import { format, parse, compareAsc, differenceInDays } from "date-fns";
+import { ja } from "date-fns/locale";
 
 import "./Summary.css";
 
@@ -48,13 +49,24 @@ export const getThisYearNextDay = (mmdd: string, today: Date): Date => {
   return bdDate;
 };
 
+// 次の記念日を取得
+export const getToday = (): Date => {
+  const dt = new Date();
+  //　いったん年月日にパースして時分秒を削除
+  const y = dt.getFullYear();
+  const m = dt.getMonth() + 1;
+  const d = dt.getDate();
+
+  return parse(y + "/" + m + "/" + d, "yyyy/MM/dd", new Date());
+};
+
 const TableCellEx = styled(TableCell)`
   padding: 0px;
 `;
 
 export const Summary = ({ channelInfo }: SummaryProps) => {
   const rows: any[] = [];
-  const today = new Date();
+  const today = getToday();
 
   for (let item of channelInfo) {
     const type = getType(item.channel);
