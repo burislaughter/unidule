@@ -1,0 +1,15 @@
+.description-area {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6; /* 一行以上は省略 */
+  margin-left: 8px !important;
+  margin-right: 8px !important;
+  color: #000000;
+  font-size: 0.8rem !important;
+  white-space: pre-wrap;
+}
+
+.Card-parent {
+  position: relative;
+}

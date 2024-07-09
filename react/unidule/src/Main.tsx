@@ -4,6 +4,7 @@ import { Backdrop, Box, CircularProgress, Divider, Grid, Link, Typography } from
 import styled from "@emotion/styled";
 import axios from "axios";
 import { MediaCard } from "./MediaCard";
+import { InformationCard } from "./InformationCard";
 import { format, addDays, subDays, startOfDay, addHours } from "date-fns";
 import { URL_BASE, channelParams } from "./const";
 import { Tweet } from "react-twitter-widgets";
@@ -16,7 +17,7 @@ import { makeStyles } from "@material-ui/core";
 import { Summary } from "./Summary";
 import { ReadMe } from "./ReadMe";
 
-const buildDate = "2024.7.3";
+const buildDate = "2024.7.9";
 
 const HeaderBox = styled(Box)({
   paddingTop: 8,
@@ -68,6 +69,8 @@ export const getChannelFromTwitterID = (tw: string): string => {
 const VIDEO_LIST_URL = URL_BASE + "video_list?channel=all";
 const CHANNEL_INFO_URL = URL_BASE + "channel_info";
 const SCHEDULE_TWEET = URL_BASE + "schedule_tweet";
+const SYSTEM_STATUS = URL_BASE + "system";
+const INFORMATION = URL_BASE + "information";
 
 function Main() {
   const { useState, useEffect } = React;
@@ -75,6 +78,8 @@ function Main() {
   const [isLoaded, setLoaded] = useState<boolean>(false);
   const [channelInfo, setChannelInfo] = useState<any>();
   const [tabSelect, setTabSelect] = React.useState("1");
+  const [systemStatus, setSystemStatus] = React.useState("");
+  const [informations, setInformations] = React.useState<any[]>([]);
 
   // 予定表ツイート
   const [scheduleTweet, setScheduleTweetList] = useState<any[]>([]);
@@ -156,7 +161,6 @@ function Main() {
         }
 
         // 動画とチャンネル情報の照合
-        // UCcq3DnobBkRca4p8pntDntg
         const ci = getChannelInfo(ci_list, obj);
 
         const card = (
@@ -172,6 +176,7 @@ function Main() {
               isTodayUpload={isTodayUpload}
               isToday={isToday}
               channelInfo={ci}
+              isMemberOnly={obj.isMemberOnly == true}
             ></MediaCard>
           </Grid>
         );
@@ -256,8 +261,14 @@ function Main() {
     const promise3 = axiosInstance.get(SCHEDULE_TWEET, {
       signal: controller.signal,
     });
+    const promise4 = axiosInstance.get(SYSTEM_STATUS, {
+      signal: controller.signal,
+    });
+    const promise5 = axiosInstance.get(INFORMATION, {
+      signal: controller.signal,
+    });
 
-    Promise.all([promise1, promise2, promise3]).then(function (values) {
+    Promise.all([promise1, promise2, promise3, promise4, promise5]).then(function (values) {
       const { data: ci_data, status: ci_status } = values[0];
       // チャンネル情報
       setChannelInfo(ci_data);
@@ -298,6 +309,13 @@ function Main() {
       setVideoArchiveList(archiveListMaster);
       setScheduleTweetList(t_data); // ツイート
 
+      const { data: s_data, status: s_status } = values[3];
+      setSystemStatus(s_data.mode);
+
+      const { data: i_data, status: i_status } = values[4];
+      setInformations(i_data);
+      console.log(i_data);
+
       setLoaded(true);
       console.log("read ok");
     });
@@ -334,7 +352,7 @@ function Main() {
           お問い合わせ <Link href="https://x.com/distant_zz">@distant_zz</Link>
         </Typography>
 
-        {isLoaded && (
+        {isLoaded && systemStatus == "online" && (
           <>
             <TabContext value={tabSelect}>
               <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -362,7 +380,7 @@ function Main() {
               <Divider></Divider>
             </Box>
 
-            <HeaderBox sx={{ backgroundColor: "#00C070 !important" }}>本日の配信 ～04:00まで</HeaderBox>
+            <HeaderBox sx={{ backgroundColor: "#00C070 !important" }}>本日の配信 ～04:00まで (メン限対応しました)</HeaderBox>
             {/* 本日の配信、動画リスト */}
             {videoTodayList.length != 0 && (
               <Box sx={{ flexGrow: 1, width: "100%", margin: "0px auto", minHeight: "40px" }}>
@@ -381,7 +399,32 @@ function Main() {
               </Box>
             )}
 
-            <HeaderBox sx={{ backgroundColor: "#3f3f3f !important" }}>X(Twitter)の予定表</HeaderBox>
+            {informations.length > 0 && (
+              <>
+                <HeaderBox sx={{ backgroundColor: "#AAC3F1 !important", marginTop: "20px !important", color: "#ffffff  !important" }}>インフォメーション</HeaderBox>
+
+                {(function () {
+                  const list = [];
+                  for (let i = 0; i < informations.length; i++) {
+                    const info = informations[i];
+                    list.push(
+                      <Grid item key={i} sm={6} md={4} lg={3}>
+                        <InformationCard key={i} title={info.title} detail={info.detail} imgUrl={info.image} url={info.url} startDateTime={info.startAt} endDateTime={info.endAt}></InformationCard>
+                      </Grid>
+                    );
+                  }
+                  return (
+                    <Box sx={{ flexGrow: 1, width: "100%", margin: "20px auto" }}>
+                      <Grid container spacing={4}>
+                        {list}
+                      </Grid>
+                    </Box>
+                  );
+                })()}
+              </>
+            )}
+
+            <HeaderBox sx={{ backgroundColor: "#3f3f3f !important", marginTop: "20px !important" }}>X(Twitter)の予定表</HeaderBox>
             {scheduleTweet.length != 0 && (
               <Box sx={{ flexGrow: 1, width: "100%", margin: "20px auto" }}>
                 <Grid container spacing={4}>
@@ -420,6 +463,26 @@ function Main() {
               </Grid>
             </Box>
           </>
+        )}
+
+        {systemStatus == "close" && (
+          <Box
+            sx={{
+              marginTop: "60px",
+            }}
+          >
+            <Typography sx={{ textAlign: "center" }}>＼ぺこり／</Typography>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <img src={`ojigi_animal_neko.png`} loading="lazy" width="20%" />
+            </Box>
+            <Typography sx={{ textAlign: "center" }}>現在、システムメンテナンス中です</Typography>
+            <Typography sx={{ textAlign: "center" }}>ご迷惑をおかけします</Typography>
+          </Box>
         )}
       </Box>
     </Box>

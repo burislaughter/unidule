@@ -5,6 +5,7 @@ import { MdOutlineNightlife, MdNotificationsOff } from "react-icons/md";
 import { HiOutlineOfficeBuilding } from "react-icons/hi";
 import { FaSquareXTwitter } from "react-icons/fa6";
 import { WiDayLightWind } from "react-icons/wi";
+import "./MediaCard.css";
 
 type ReadMeProps = {};
 
@@ -49,13 +50,6 @@ export const ReadMe = ({}: ReadMeProps) => {
             <WiDayLightWind {...iconProp} />
           </ListItemIcon>
           <ListItemTextEx primary="ゆにじゅ～るは午前4時～翌午前4時を一日としています" primaryTypographyProps={{ fontSize: "14px", fontWeight: 700 }} />
-        </ListItemButtonEx>
-
-        <ListItemButtonEx sx={{ marginTop: 2 }}>
-          <ListItemIcon sx={{ minWidth: 22 }}>
-            <MdNotificationsOff {...iconProp} />
-          </ListItemIcon>
-          <ListItemTextEx primary="メン限はスケジュールに出ません" primaryTypographyProps={{ fontSize: "14px", fontWeight: 700 }} />
         </ListItemButtonEx>
 
         <ListItemButtonEx sx={{ marginTop: 2, position: "relative" }}>

@@ -19,9 +19,9 @@ def get_video_items(video_id_list, youtube):
     for chunk in chunk_list:
         video_ids = ",".join(chunk)
         request = youtube.videos().list(
-            part="snippet,statistics,liveStreamingDetails",
+            part="snippet,status,statistics,liveStreamingDetails",
             id=video_ids,
-            fields="items(id,snippet(title,channelId,description,liveBroadcastContent,publishedAt,thumbnails),statistics(viewCount,likeCount),liveStreamingDetails(scheduledStartTime,scheduledEndTime,scheduledEndTime,actualStartTime,actualEndTime))"
+            fields="items(id,status(privacyStatus),snippet(title,channelId,description,liveBroadcastContent,publishedAt,thumbnails),statistics(viewCount,likeCount),liveStreamingDetails(scheduledStartTime,scheduledEndTime,scheduledEndTime,actualStartTime,actualEndTime))"
         )
         response = request.execute()
         video_items.extend(response["items"])
@@ -43,13 +43,20 @@ def get_video_id_in_playlist(playlistId, youtube):
         fields="nextPageToken,items/snippet/resourceId/videoId"
     )
 
-    while request:
-        response = request.execute()
-        video_id_list.extend(list(map(lambda item: item["snippet"]["resourceId"]["videoId"], response["items"])))
-        request = youtube.playlistItems().list_next(request, response)
+    try:
+        while request:
+            response = request.execute()
+            video_id_list.extend(list(map(lambda item: item["snippet"]["resourceId"]["videoId"], response["items"])))
+            request = youtube.playlistItems().list_next(request, response)
 
-    return video_id_list
+        return video_id_list
 
+    except Exception as e:
+        print('get_video_id_in_playlist エラー')
+        print(e)      
+
+
+    return []
 
 
 # search.list から検索

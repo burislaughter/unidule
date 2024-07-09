@@ -56,3 +56,21 @@
     background-color: #f2ec22;
   }
 }
+
+.Member-only {
+  display: inline-block;
+  box-shadow: 0px 0px 15px 0px rgba(0, 0, 0, 0.35);
+  border-radius: 6px;
+  padding-right: 6px;
+}
+
+.Member-only-text {
+  color: rgb(0, 141, 118);
+  font-size: 0.8rem !important;
+  font-weight: 800 !important;
+}
+
+.Member-only-icon {
+  color: rgb(0, 141, 118) !important;
+  vertical-align: text-bottom;
+}

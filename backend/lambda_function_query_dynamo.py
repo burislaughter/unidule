@@ -6,10 +6,11 @@ from googleapiclient.discovery import build
 from boto3.dynamodb.conditions import Key, Attr
 import json
 from lambda_function_update_dynamo import importVideoListDocument
-from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_YOUTUBE_VIDEO
+from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_YOUTUBE_VIDEO
 from util import decimal_default_proc
 import youtubeAPI
-import datetime
+from datetime import datetime, timezone, timedelta
+
 
 print('Loading function')
 dynamodb = boto3.resource('dynamodb')
@@ -26,20 +27,31 @@ def getVideoList(table, channel_owner):
     table = dynamodb.Table(table)
     try:
         if channel_owner == 'all':
-            response = table.scan()
+            date = datetime.now(timezone.utc) - timedelta(days=7)
+            baseAt = date.isoformat()
+
+            response = table.query(
+                IndexName = 'dummy-startAt-index',
+                KeyConditionExpression=Key('dummy').eq('dummy') & Key('startAt').gte(baseAt),
+                ScanIndexForward=False
+            )
             data = response['Items']
 
             # レスポンスに LastEvaluatedKey が含まれなくなるまでループ処理を実行する
             while 'LastEvaluatedKey' in response:
                 print(response['LastEvaluatedKey']['uuid'])
+                response = table.query(
+                    IndexName = 'dummy-startAt-index',
+                    KeyConditionExpression=Key('dummy').eq('dummy') & Key('startAt').gte(baseAt),
+                    ScanIndexForward=False,
+                    ExclusiveStartKey=response['LastEvaluatedKey']
+                )
 
-                response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
                 if 'LastEvaluatedKey' in response:
                     print("LastEvaluatedKey: {}".format(response['LastEvaluatedKey']))
                 data.extend(response['Items'])
 
             response['Items'] = sorted(data, key=lambda u: u["startAt"], reverse=True)
-
             print('getVideoList all finish')
         else:
             response = table.query(
@@ -131,7 +143,7 @@ def getChannelInfoDocument(table):
 #################################################################################################
 def getScheduleTweetDocument(table):
     print('getScheduleTweetDocument start')
-    dt_now = math.floor((datetime.datetime.now() + datetime.timedelta(days=-8)).timestamp())
+    dt_now = math.floor((datetime.now() + timedelta(days=-8)).timestamp())
 
     # dynamoDBで検索する用の情報を付随する
     table = dynamodb.Table(table)
@@ -159,6 +171,47 @@ def getVideoItem(v_list, devKey):
     
     return youtubeAPI.get_video_items(v_list, youtube )
 
+
+
+
+################################################################################################
+# システムステータスの取得
+#################################################################################################
+def getSystemStatus():
+    table = dynamodb.Table('system')
+    try:
+        response = table.scan()
+        print('getSystemStatus finish')
+
+        return response['Items']
+    except Exception as e:
+        print('getSystemStatus エラー')
+        print(e)
+
+################################################################################################
+# インフォメーションの取得
+# 現在時刻から開催中のお知らせを取得する
+#################################################################################################
+def getInformation():
+    dt_limit = datetime.now(timezone.utc).isoformat()
+
+    table = dynamodb.Table('information')
+    try:
+        # 開始と終了の日時から開催中のお知らせを取得する
+        response = table.query(
+            KeyConditionExpression=Key('dummy').eq('dummy') & Key('endAt').gte(dt_limit),
+            ScanIndexForward=False,
+            FilterExpression=Key('startAt').lte(dt_limit),
+        )
+
+        print('getInformation finish')
+
+        return response['Items']
+    except Exception as e:
+        print('getInformation エラー')
+        print(e)
+
+    
 
 ################################################################################################
 # 動画情報にチャンネル情報を付随させる
@@ -360,5 +413,29 @@ def lambda_handler(event, context):
             },
             'body': "OK"
         }
-
-
+    elif pathParam == PATH_PARAMETER_SYSTEM and httpMethod == "GET":
+        print('システムステータス')
+        items = getSystemStatus()
+        return {
+            'statusCode': 200,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT"
+            },
+            'body': json.dumps(items[0], default=decimal_default_proc, ensure_ascii=False)
+            
+        }
+    elif pathParam == PATH_PARAMETER_INFORMATION and httpMethod == "GET":
+        print('インフォメーション')
+        items = getInformation()
+        return {
+            'statusCode': 200,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT"
+            },
+            'body': json.dumps(items, default=decimal_default_proc, ensure_ascii=False)
+            
+        }

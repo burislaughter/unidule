@@ -6,6 +6,7 @@ import { Avatar, Box, Link } from "@mui/material";
 import styled from "@emotion/styled";
 import { format } from "date-fns";
 import "./MediaCard.css";
+import { MdStars } from "react-icons/md";
 
 type Props = {
   imgUrl: string;
@@ -19,6 +20,7 @@ type Props = {
   isTodayUpload: boolean; // 本日アップロードされた動画
   isToday: boolean; // 本日のもの
   channelInfo: any;
+  isMemberOnly: boolean;
 };
 
 const CardContentEx = styled(CardContent)`
@@ -41,6 +43,7 @@ export const MediaCard = ({
   isTodayUpload,
   isToday,
   channelInfo,
+  isMemberOnly,
 }: Props) => {
   let startDateStr = "";
   let startTimeStr = "";
@@ -96,9 +99,20 @@ export const MediaCard = ({
           <CardMedia image={imgUrl} component="img" loading="lazy" />
         </Link>
         <CardContentEx>
-          <Typography variant="body2" gutterBottom component="div" sx={{ fontWeight: "bold" }}>
-            {title}
-          </Typography>
+          <Box>
+            {isMemberOnly && (
+              <Box className="Member-only">
+                <MdStars size="18" className="Member-only-icon" />
+                <Typography variant="body2" component="span" className="Member-only-text">
+                  メン限
+                </Typography>
+              </Box>
+            )}
+            <Typography component="span" variant="body2" gutterBottom sx={{ fontWeight: "bold" }}>
+              {title}
+            </Typography>
+          </Box>
+
           <Typography variant="body2" color="text.secondary">
             {channelInfo?.snippet?.title}
           </Typography>

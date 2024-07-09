@@ -5,7 +5,7 @@ import boto3
 from boto3.dynamodb.conditions import Key, Attr
 import json
 from decimal import Decimal
-from util import owner_to_cid, owner_to_pid, channelParams
+from util import owner_to_cid, owner_to_member_only, owner_to_pid, channelParams
 import youtubeAPI
 from googleapiclient.discovery import build
 import pandas as pd
@@ -56,13 +56,21 @@ def getVideoListFromYT(devKey, table, channel_owner,is_force):
     # チャンネルが見つからない場合
     if p_list_id == None:
         print('不明なチャンネル所有者' + channel_owner)
-    
 
     # youtube クライアントの作成
     youtube = build("youtube", "v3", developerKey = devKey)
 
     # チャンネルの新着動画ID一覧の取得
     v_id_list = youtubeAPI.get_video_id_in_playlist(p_list_id, youtube)
+
+    # メン限
+    p_list_mem = owner_to_member_only(channel_owner)
+    # チャンネルの新着動画ID一覧の取得
+    v_id_list_mem = youtubeAPI.get_video_id_in_playlist(p_list_mem, youtube)
+
+    # メン限の動画IDをマージ
+    if v_id_list_mem:
+        v_id_list = v_id_list + v_id_list_mem
 
     # 全てを対象とする場合
     if is_force:
@@ -143,6 +151,7 @@ def importVideoListDocument(v_list, table, channel_owner):
             for item in v_list:
                 # DynamoDB用のフィールドを追加
                 # channel
+                item['dummy'] = 'dummy'  # ダミーパーティションキー
                 # atartAt
                 item['channel'] = channel_owner
                 item['snippet']['description'] = item['snippet']['description'][0:32]
@@ -155,6 +164,9 @@ def importVideoListDocument(v_list, table, channel_owner):
 
                 # 配信ステータスを平滑化
                 item['liveBroadcastContent'] = item['snippet']['liveBroadcastContent']
+
+                # メン限判定判定フラグ
+                item['isMemberOnly'] = (item["status"]["privacyStatus"] == "public") and (not "viewCount" in item["statistics"])
 
                 # 配信予定のない枠だけを取得した場合
                 if startAt:
@@ -402,8 +414,8 @@ def lambda_handler(event, context):
     elif exec_mode == 'UPDATE_VIDEO_LIST_ALL':  # 全てのユニメンチャンネル
         is_force = event['force'] if 'force' in event else ""
         
-        for (own , c_id, p_id ) in channelParams:
-            if not own == 'uniraid' and not own == 'uniraid_cut':
+        for (own , c_id, p_id, mem ) in channelParams:
+            if not own == 'uniraid' and not own == 'uniraid_cut' and not own == 'other':
                 # Youtubeから動画情報の取得
                 v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'],os.environ['DYNAMO_DB_IDS_TABLE'], own, is_force)
 
