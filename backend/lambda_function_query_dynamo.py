@@ -21,13 +21,13 @@ dynamodb = boto3.resource('dynamodb')
 # table ... 対象テーブル
 # channel_owner ... チャンネル所有者名
 #################################################################################################
-def getVideoList(table, channel_owner):
+def getVideoList(table, channel_owner, days=7):
     print('getVideoList start')
 
     table = dynamodb.Table(table)
     try:
         if channel_owner == 'all':
-            date = datetime.now(timezone.utc) - timedelta(days=7)
+            date = datetime.now(timezone.utc) - timedelta(days=days)
             baseAt = date.isoformat()
 
             response = table.query(

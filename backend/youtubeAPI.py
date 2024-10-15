@@ -29,16 +29,35 @@ def get_video_items(video_id_list, youtube):
     return video_items
 
 
+####################################################################
+# ID一覧から動画の有効なIDを返却
+def get_video_ids(video_id_list, youtube):
+    video_items = []
+
+    chunk_list = list(chunks(video_id_list, 50)) # 50個のIDに分割してリクエスト
+    for chunk in chunk_list:
+        video_ids = ",".join(chunk)
+        request = youtube.videos().list(
+            part="snippet",
+            id=video_ids,
+            fields="items/id"
+        )
+        response = request.execute()
+        video_items.extend(response["items"])
+
+    return video_items
+
+
 
 
 # 再生リストからID一覧を取得
 # コスト1
-def get_video_id_in_playlist(playlistId, youtube):
+def get_video_id_in_playlist(playlistId, youtube, isOnce):
     video_id_list = []
 
     request = youtube.playlistItems().list(
         part="snippet",
-        maxResults=50,
+        maxResults=10,
         playlistId=playlistId,
         fields="nextPageToken,items/snippet/resourceId/videoId"
     )
@@ -48,6 +67,8 @@ def get_video_id_in_playlist(playlistId, youtube):
             response = request.execute()
             video_id_list.extend(list(map(lambda item: item["snippet"]["resourceId"]["videoId"], response["items"])))
             request = youtube.playlistItems().list_next(request, response)
+            if isOnce:
+                break
 
         return video_id_list
 

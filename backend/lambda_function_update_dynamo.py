@@ -5,6 +5,9 @@ import boto3
 from boto3.dynamodb.conditions import Key, Attr
 import json
 from decimal import Decimal
+
+import importlib
+# from lambda_function_query_dynamo import getVideoList
 from util import owner_to_cid, owner_to_member_only, owner_to_pid, channelParams
 import youtubeAPI
 from googleapiclient.discovery import build
@@ -61,12 +64,12 @@ def getVideoListFromYT(devKey, table, channel_owner,is_force):
     youtube = build("youtube", "v3", developerKey = devKey)
 
     # チャンネルの新着動画ID一覧の取得
-    v_id_list = youtubeAPI.get_video_id_in_playlist(p_list_id, youtube)
+    v_id_list = youtubeAPI.get_video_id_in_playlist(p_list_id, youtube, True)
 
     # メン限
     p_list_mem = owner_to_member_only(channel_owner)
     # チャンネルの新着動画ID一覧の取得
-    v_id_list_mem = youtubeAPI.get_video_id_in_playlist(p_list_mem, youtube)
+    v_id_list_mem = youtubeAPI.get_video_id_in_playlist(p_list_mem, youtube, True)
 
     # メン限の動画IDをマージ
     if v_id_list_mem:
@@ -167,6 +170,10 @@ def importVideoListDocument(v_list, table, channel_owner):
 
                 # メン限判定判定フラグ
                 item['isMemberOnly'] = (item["status"]["privacyStatus"] == "public") and (not "viewCount" in item["statistics"])
+
+                # 限定公開は追加しない
+                if item["status"]["privacyStatus"] == "unlisted":
+                    continue
 
                 # 配信予定のない枠だけを取得した場合
                 if startAt:
@@ -426,6 +433,9 @@ def lambda_handler(event, context):
 
                     print('lambda finish',event,own)
 
+        # 削除チェック
+        check_delete_video()
+
         return {
             'statusCode': 201,
             'headers': {
@@ -435,4 +445,47 @@ def lambda_handler(event, context):
             },
             'body': "OK"
         }
+    elif exec_mode == 'CHECK_DELETE_VIDEO':  # 削除された動画/配信をチェック
 
+        check_delete_video()
+        return {
+            'statusCode': 201,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+            },
+            'body': "OK"
+        }
+    
+def check_delete_video():
+    # 一日分の動画を取得
+    table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+
+    query_dynamo = importlib.import_module('lambda_function_query_dynamo') 
+    v_list = query_dynamo.getVideoList(table,'all',1)
+    v_ids = get_ids(v_list)
+
+    # Youtubeに動画DIを問い合わせ
+    # youtube クライアントの作成
+    youtube = build("youtube", "v3", developerKey = os.environ['YOUTUBE_API_KEY'])
+    youtbe_videos = youtubeAPI.get_video_ids(v_ids, youtube )
+    y_ids = get_ids(youtbe_videos)
+
+    # 問い合わせ内容の比較し削除
+    for vid in v_ids:
+        if not (vid in y_ids):
+            table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+            v_list = query_dynamo.getVideoOne(table, vid)
+            item = v_list[0]
+            item['isDeleted'] = 'true'
+            query_dynamo.updateVideoOne(table, item)
+
+
+def get_ids(items):
+    ids = []
+    for item in items:
+        if not 'isDeleted' in item.keys():
+            ids.append(item['id'])
+
+    return ids
