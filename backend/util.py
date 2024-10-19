@@ -9,6 +9,7 @@ PATH_PARAMETER_SCHEDULE_TWEET = '/schedule_tweet'
 PATH_PARAMETER_YOUTUBE_VIDEO = '/youtube_video'
 PATH_PARAMETER_SYSTEM = '/system'
 PATH_PARAMETER_INFORMATION = '/information'
+PATH_PARAMETER_VOICE = '/voice'
 
 # チャンネル情報の定数
 # チャンネルオーナー、チャンネルID、新着動画プレイリストID

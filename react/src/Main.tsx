@@ -17,7 +17,7 @@ import { makeStyles } from "@material-ui/core";
 import { Summary } from "./Summary";
 import { ReadMe } from "./ReadMe";
 
-const buildDate = "2024.7.9";
+const buildDate = "2024.10.15";
 
 const HeaderBox = styled(Box)({
   paddingTop: 8,
@@ -288,11 +288,11 @@ function Main() {
         return t1 > t2;
       });
 
-      for (let item of v_data) {
-        if (item.id == "AeHrOpahLLU") {
-          console.log();
-        }
-      }
+      // for (let item of v_data) {
+      //   if (item.id == "AeHrOpahLLU") {
+      //     console.log();
+      //   }
+      // }
 
       // 取得した動画一覧をリストに格納
       const { archiveListMaster, futureListMaster, todayListMaster } = createSukedule(ci_data, tmp_v_date);

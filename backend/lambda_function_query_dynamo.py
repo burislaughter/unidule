@@ -6,7 +6,7 @@ from googleapiclient.discovery import build
 from boto3.dynamodb.conditions import Key, Attr
 import json
 from lambda_function_update_dynamo import importVideoListDocument
-from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_YOUTUBE_VIDEO
+from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE
 from util import decimal_default_proc
 import youtubeAPI
 from datetime import datetime, timezone, timedelta
@@ -225,6 +225,24 @@ def extendChannelInfo(item, devKey):
 
 
 ################################################################################################
+# 音声ボタン用の
+#################################################################################################
+def getVoiceList():
+    table = dynamodb.Table(os.environ['DYNAMO_DB_VOICE_LIST_TABLE'])
+    try:
+        # 音声リストはスキャン
+        response = table.scan()
+
+        print('getVoiceList finish')
+
+        return response['Items']
+    except Exception as e:
+        print('getVoiceList エラー')
+        print(e)
+ 
+
+
+################################################################################################
 # Lambdaヘッダー
 #################################################################################################
 def lambda_handler(event, context):
@@ -429,6 +447,19 @@ def lambda_handler(event, context):
     elif pathParam == PATH_PARAMETER_INFORMATION and httpMethod == "GET":
         print('インフォメーション')
         items = getInformation()
+        return {
+            'statusCode': 200,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT"
+            },
+            'body': json.dumps(items, default=decimal_default_proc, ensure_ascii=False)
+            
+        }
+    elif pathParam == PATH_PARAMETER_VOICE and httpMethod == "GET":
+        print('音声リスト')
+        items = getVoiceList()
         return {
             'statusCode': 200,
             'headers': {

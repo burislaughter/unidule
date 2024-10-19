@@ -3,6 +3,7 @@ export type UniMen = Record<string, { uid: string; name: string; order: number; 
 // APIエンドポイント
 // 本番
 export const URL_BASE = "https://api.unidule.jp/prd/";
+export const URL_RES = "https://unidule.jp/res/";
 // Dev
 // export const URL_BASE = "https://d1ezxt9xzove4q.cloudfront.net/dev/";
 

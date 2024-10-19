@@ -1,0 +1,14 @@
+.outline {
+  display: inline-block;
+  color: #ffffff; /* 文字の色 */
+  letter-spacing: 6px; /* 文字間 */
+  text-shadow:
+    3px 3px 3px #e00065,
+    -3px 3px 3px #e00065,
+    3px -3px 3px #e00065,
+    -3px -3px 3px #e00065,
+    3px 0px 3px #e00065,
+    0px 3px 3px #e00065,
+    -3px 0px 3px #e00065,
+    0px -3px 3px #e00065; /* 文字の影 */
+}

@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
-import { BrowserRouter, Route, Routes, Link } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Main from "./Main";
-import { Box, FormControl, InputLabel, Input, FormHelperText, Button, Typography, TextField, Select, MenuItem } from "@mui/material";
+import { Box, Link, FormControl, InputLabel, Input, FormHelperText, Button, Typography, TextField, Select, MenuItem } from "@mui/material";
 import { useCallback, useState } from "react";
 import axios from "axios";
 import { URL_BASE, channelParams } from "./const";
@@ -261,6 +261,9 @@ function Admin() {
             強制アップデート
           </Button>
           <Typography sx={{ whiteSpace: "pre-wrap", backgroundColor: "#F0F0F0", marginTop: "10px" }}>{JSON.stringify(videoInfo, null, "\t")}</Typography>
+
+          <Link href={"/"}>/index</Link>
+          <Link href={"/sp/maru_button"}>/sp/maru_button</Link>
         </Box>
       )}
     </Box>
