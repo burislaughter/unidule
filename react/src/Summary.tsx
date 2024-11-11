@@ -1,7 +1,6 @@
 import { Typography, styled } from "@mui/material";
-import { getOrder } from "./ChannelFillter";
 import { ChannelIconComp } from "./ChannelIconComp";
-import { channelParams } from "./const";
+import { channelParams, getOrder } from "./const";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";

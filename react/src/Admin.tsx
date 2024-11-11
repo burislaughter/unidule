@@ -263,7 +263,7 @@ function Admin() {
           <Typography sx={{ whiteSpace: "pre-wrap", backgroundColor: "#F0F0F0", marginTop: "10px" }}>{JSON.stringify(videoInfo, null, "\t")}</Typography>
 
           <Link href={"/"}>/index</Link>
-          <Link href={"/sp/maru_button"}>/sp/maru_button</Link>
+          <Link href={"/sp/voice_button"}>/sp/voice_button</Link>
         </Box>
       )}
     </Box>

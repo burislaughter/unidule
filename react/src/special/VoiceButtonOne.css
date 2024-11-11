@@ -1,0 +1,43 @@
+@keyframes rotation {
+  0% {
+    transform: rotate(0);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rotation-r {
+  0% {
+    transform: rotate(0);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+.emoji-fill {
+  color: transparent;
+  text-shadow: 0 0 0 #000;
+}
+.emoji-outline {
+  position: relative;
+  color: transparent;
+  text-shadow: 0 0 1px #000;
+}
+.emoji-outline::before {
+  position: absolute;
+  content: attr("👋");
+  text-shadow: 0 0 0 #fff; /* ⬅︎ Set to parents background colour */
+}
+
+.icon-shadow-w {
+  filter: drop-shadow(0px 0px 4px rgb(255 255 255 / 0.8));
+  width: 32px;
+  height: 32px;
+}
+.icon-shadow-b {
+  filter: drop-shadow(0px 0px 4px rgb(0 0 0 / 0.8));
+  width: 32px;
+  height: 32px;
+}

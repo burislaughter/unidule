@@ -1,16 +1,7 @@
 import { Stack } from "@mui/material";
 import { ChannelIconComp } from "./ChannelIconComp";
-import { channelParams } from "./const";
+import { getFullName, getOrder } from "./const";
 import { ResetIconComp } from "./ResetIconComp";
-
-export const getOrder = (channel: string): number => {
-  const cid = channelParams[channel];
-  return cid.order;
-};
-export const getFullName = (channel: string): string => {
-  const cid = channelParams[channel];
-  return cid.name;
-};
 
 type ChannelFillterProps = {
   channelInfo: any[]; // チャンネル情報
@@ -21,7 +12,7 @@ type ChannelFillterProps = {
 };
 
 export const ChannelFillter = ({ channelInfo, fillterBtnClickCB, sortSelect, resetBtnClickCB }: ChannelFillterProps) => {
-  const channelIconsList: any[] = [0, 0, 0, 0, 0, 0, 0, 0];
+  const channelIconsList: any[] = [];
   for (let item of channelInfo) {
     const idx = getOrder(item.channel);
     const isSelected = sortSelect.size == 0 ? true : sortSelect.has(item.channel);
