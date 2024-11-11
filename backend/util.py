@@ -10,6 +10,8 @@ PATH_PARAMETER_YOUTUBE_VIDEO = '/youtube_video'
 PATH_PARAMETER_SYSTEM = '/system'
 PATH_PARAMETER_INFORMATION = '/information'
 PATH_PARAMETER_VOICE = '/voice'
+PATH_PARAMETER_RAW_VOICE = '/raw_voice'
+PATH_PARAMETER_RAW_VOICE_POOL = '/raw_voice_pool'
 
 # チャンネル情報の定数
 # チャンネルオーナー、チャンネルID、新着動画プレイリストID
