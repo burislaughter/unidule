@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import * as React from "react";
-import { Backdrop, Box, CircularProgress, Divider, Grid, Link, Typography } from "@mui/material";
+import { Backdrop, Box, Button, CircularProgress, Divider, Grid, Link, Typography } from "@mui/material";
 import styled from "@emotion/styled";
 import axios from "axios";
 import { MediaCard } from "./MediaCard";
@@ -13,11 +13,11 @@ import TabContext from "@mui/lab/TabContext";
 import TabList from "@mui/lab/TabList";
 import TabPanel from "@mui/lab/TabPanel";
 import ChannelFillter from "./ChannelFillter";
-import { makeStyles } from "@material-ui/core";
 import { Summary } from "./Summary";
 import { ReadMe } from "./ReadMe";
+import { useNavigate } from "react-router-dom";
 
-const buildDate = "2024.7.9";
+const buildDate = "2024.11.16";
 
 const HeaderBox = styled(Box)({
   paddingTop: 8,
@@ -74,6 +74,7 @@ const INFORMATION = URL_BASE + "information";
 
 function Main() {
   const { useState, useEffect } = React;
+  const navigate = useNavigate(); // historyを用意する
 
   const [isLoaded, setLoaded] = useState<boolean>(false);
   const [channelInfo, setChannelInfo] = useState<any>();
@@ -288,11 +289,11 @@ function Main() {
         return t1 > t2;
       });
 
-      for (let item of v_data) {
-        if (item.id == "AeHrOpahLLU") {
-          console.log();
-        }
-      }
+      // for (let item of v_data) {
+      //   if (item.id == "AeHrOpahLLU") {
+      //     console.log();
+      //   }
+      // }
 
       // 取得した動画一覧をリストに格納
       const { archiveListMaster, futureListMaster, todayListMaster } = createSukedule(ci_data, tmp_v_date);
@@ -314,7 +315,6 @@ function Main() {
 
       const { data: i_data, status: i_status } = values[4];
       setInformations(i_data);
-      console.log(i_data);
 
       setLoaded(true);
       console.log("read ok");
@@ -346,7 +346,7 @@ function Main() {
         <Typography align="center" fontFamily="'RocknRoll One'" mx={1} sx={{ fontSize: "14vw" }}>
           ゆにじゅ～る
         </Typography>
-        <Typography sx={{ textAlign: "right" }}>[非公式]ファンメイドスケジューラー</Typography>
+        <Typography sx={{ textAlign: "right" }}>ゆにれいど！[非公式]ファンメイドスケジューラー</Typography>
         <Typography sx={{ textAlign: "right", fontSize: "0.75rem" }}>build {buildDate}</Typography>
         <Typography sx={{ textAlign: "right", fontSize: "0.75rem", marginBottom: "4px" }}>
           お問い合わせ <Link href="https://x.com/distant_zz">@distant_zz</Link>
@@ -357,9 +357,20 @@ function Main() {
             <TabContext value={tabSelect}>
               <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
                 <TabList onChange={onChangeTab} aria-label="チャンネルフィルター">
-                  <Tab label="FILLTER" value="1" />
+                  <Tab label="LIVE" value="1" />
                   <Tab label="SUMMARY" value="2" />
-                  <Tab label="READ ME" value="3" />
+                  <Tab
+                    label="VOICE BUTTON"
+                    value="3"
+                    onClick={() => {
+                      navigate("/sp/voice_button");
+                    }}
+                    sx={{
+                      color: "#0371D6",
+                      textDecoration: "underline",
+                    }}
+                  />
+                  <Tab label="READ ME" value="4" />
                 </TabList>
               </Box>
               <TabPanelEx value="1">
@@ -370,7 +381,7 @@ function Main() {
                 {/* サマリー */}
                 <Summary channelInfo={channelInfo} />
               </TabPanelEx>
-              <TabPanelEx value="3">
+              <TabPanelEx value="4">
                 {/* サマリー */}
                 <ReadMe />
               </TabPanelEx>

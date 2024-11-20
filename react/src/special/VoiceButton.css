@@ -1,0 +1,30 @@
+.outline {
+  display: inline-block;
+  color: #ffffff; /* 文字の色 */
+  letter-spacing: 6px; /* 文字間 */
+  text-shadow:
+    3px 3px 3px #e00065,
+    -3px 3px 3px #e00065,
+    3px -3px 3px #e00065,
+    -3px -3px 3px #e00065,
+    3px 0px 3px #e00065,
+    0px 3px 3px #e00065,
+    -3px 0px 3px #e00065,
+    0px -3px 3px #e00065; /* 文字の影 */
+}
+
+.flex-wrap {
+  display: flex;
+  /* outline: auto; */
+}
+.left-column {
+  white-space: nowrap;
+  /* background-color: #ccc; */
+  /* outline: auto; */
+  padding: 10px;
+}
+.right-column {
+  width: 100%;
+  /* background-color: #eee; */
+  padding: 10px;
+}

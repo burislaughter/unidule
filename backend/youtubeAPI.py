@@ -57,7 +57,7 @@ def get_video_id_in_playlist(playlistId, youtube, isOnce):
 
     request = youtube.playlistItems().list(
         part="snippet",
-        maxResults=10,
+        maxResults=50,
         playlistId=playlistId,
         fields="nextPageToken,items/snippet/resourceId/videoId"
     )

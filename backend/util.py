@@ -9,6 +9,9 @@ PATH_PARAMETER_SCHEDULE_TWEET = '/schedule_tweet'
 PATH_PARAMETER_YOUTUBE_VIDEO = '/youtube_video'
 PATH_PARAMETER_SYSTEM = '/system'
 PATH_PARAMETER_INFORMATION = '/information'
+PATH_PARAMETER_VOICE = '/voice'
+PATH_PARAMETER_RAW_VOICE = '/raw_voice'
+PATH_PARAMETER_RAW_VOICE_POOL = '/raw_voice_pool'
 
 # チャンネル情報の定数
 # チャンネルオーナー、チャンネルID、新着動画プレイリストID
@@ -58,3 +61,29 @@ def owner_to_member_only(channel_owner):
     for (own , c_id, p_idm, mem ) in channelParams:
         if own == channel_owner:
             return mem
+
+
+class TimeSpliteException(Exception):
+    pass
+
+def splite_time(time_str):
+    time_split = time_str.split(':')
+    hour = 0
+    minute = 0
+    second = 0
+
+    try:
+        if(len(time_split) == 3) :
+            hour, minute, second = map(int, time_split)
+        elif(len(time_split) == 2) :
+            minute, second = map(int, time_split)
+        elif(len(time_split) == 1) :
+            # 秒だけ指定
+            second = int(time_split[0])
+        else:
+            raise TimeSpliteException('開始時間の設定に問題があります 31:52 や 4:01:32 のような書き方でお願いします')
+    except Exception as e:
+        print(e)
+        raise TimeSpliteException('開始時間の設定に問題があります 31:52 や 4:01:32 のような書き方でお願いします')
+    
+    return hour, minute, second

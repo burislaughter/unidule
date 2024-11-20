@@ -1,20 +1,41 @@
+from asyncio import gather, run
+import asyncio
+import base64
+import cgi
+import io
+from json import decoder
 import math
 import os
-import pprint
+from random import Random
+from threading import Thread
+import time
+from urllib.parse import parse_qs, parse_qsl, urlparse
+import uuid
 import boto3
 from googleapiclient.discovery import build
 from boto3.dynamodb.conditions import Key, Attr
 import json
+
+import urllib
 from lambda_function_update_dynamo import importVideoListDocument
-from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_YOUTUBE_VIDEO
+from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE, PATH_PARAMETER_RAW_VOICE, PATH_PARAMETER_RAW_VOICE_POOL
 from util import decimal_default_proc
+from util import splite_time
+
 import youtubeAPI
+import s3API
+import requests
+from requests.auth import HTTPBasicAuth
+
 from datetime import datetime, timezone, timedelta
+
+# 音声抽出用サーバーURL
+VOICE_SERVER = 'https://unidule.net:34449/uwsgi_yt_dlp'
+
 
 
 print('Loading function')
 dynamodb = boto3.resource('dynamodb')
-
 
 ################################################################################################
 # DynamoDBから動画リストの取得
@@ -97,18 +118,18 @@ def getVideoOne(table, video_id):
 # table ... 対象テーブル
 # video_id ... 動画ID
 #################################################################################################
-def updateVideoOne(table, item):
-    print('updateVideoOne start')
+def updateDynamoDBOne(table, item):
+    print('updateDynamoDBOne ' + table +'start')
 
     table = dynamodb.Table(table)
     try:
         responce = table.put_item(
             Item = item
         )
-        print('updateVideoOne finish')    
+        print('updateDynamoDBOne finish')    
         return responce
     except Exception as e:
-        print('updateVideoOne エラー')
+        print('updateDynamoDBOne エラー')
         print(e)
 
 
@@ -225,6 +246,134 @@ def extendChannelInfo(item, devKey):
 
 
 ################################################################################################
+# 音声ボタン用の
+#################################################################################################
+def getVoiceList():
+    table = dynamodb.Table(os.environ['DYNAMO_DB_VOICE_LIST_TABLE'])
+    try:
+        # 音声リストはスキャン
+        options = {
+            'FilterExpression': Attr('isDeleted').ne('true'),
+        }
+
+        response = table.scan(**options)
+
+        print('getVoiceList finish')
+
+        return response['Items']
+    except Exception as e:
+        print('getVoiceList エラー')
+        print(e)
+ 
+
+################################################################################################
+# DynamoDBからに音声情報を追加する
+# item  ... voice情報
+#################################################################################################
+def putVoiceOne(item):
+    print('putVoiceOne start')
+
+    table = dynamodb.Table(os.environ['DYNAMO_DB_VOICE_LIST_TABLE'])
+    try:
+        responce = table.put_item(
+            Item = item
+        )
+        print('putVoiceOne finish')    
+        return responce
+    except Exception as e:
+        print('putVoiceOne エラー')
+        print(e)
+        return False
+
+
+
+################################################################################################
+# DynamoDBから動画リストの取得
+# table ... 対象テーブル
+# uid ... VoiceID
+#################################################################################################
+def getVoiceOne(voice_uid):
+    print('getVoiceOne start')
+
+    table = dynamodb.Table(os.environ['DYNAMO_DB_VOICE_LIST_TABLE'])
+    try:
+        response = table.query(
+            IndexName="uid-index",
+            KeyConditionExpression=Key('uid').eq(voice_uid)
+        )
+        return response['Items']
+
+    except Exception as e:
+        print('dynamodb get エラー')
+        print(e)
+
+    print('getVoiceOne finish')    
+
+
+################################################################################################
+# レスポンスの作成
+#################################################################################################
+def createResponce(status,messsage):
+    return {
+        'statusCode': status,
+        'headers': {
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Origin": '*',
+            "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+        },
+        'body': messsage
+    }
+
+
+################################################################################################
+# https://www.youtube.com/live/xxxxx のURLを 
+# https://www.youtube.com/watch?v=xxxx のURLに変更する
+#################################################################################################
+def replaceLiveUrl(url):
+    p = urlparse(url)
+    # print(p[2])
+    url = p[2].replace('/live/', 'https://www.youtube.com/watch?v=')
+    return url
+
+
+
+################################################################################################
+# イベントループを開始します
+################################################################################################
+def begin_ev_thread(loop: asyncio.AbstractEventLoop):
+    asyncio.set_event_loop(loop)
+    try:
+        print('==> event loop start')
+        loop.run_forever()
+    finally:
+        # 例外が出た場合は止める
+        print('==> event loop close')
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.close()
+
+################################################################################################
+# オンプレ側Youtubeダウンロ―ダー呼び出しを非同期化したもの
+################################################################################################
+async def CallRawVideoDownloader(video_id, start, channel, uid):
+
+    requests.get(
+        VOICE_SERVER,
+        params={
+            'video_id':video_id,
+            'start':start,
+            'channel':channel,
+            'uid':uid,
+        },
+        auth=HTTPBasicAuth(
+            os.environ['RAW_VIDEO_USER_ID'], 
+            os.environ['RAW_VIDEO_PASSWORD']
+        )
+    )
+
+
+
+
+################################################################################################
 # Lambdaヘッダー
 #################################################################################################
 def lambda_handler(event, context):
@@ -244,18 +393,10 @@ def lambda_handler(event, context):
         # all ... 全員
         channel_owner = event['queryStringParameters']['channel']
 
-        table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
-        v_list = getVideoList(table, channel_owner)
+        video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        v_list = getVideoList(video_list_table, channel_owner)
         
-        return {
-            'statusCode': 200,
-            'headers': {
-                "Access-Control-Allow-Headers": "Content-Type",
-                "Access-Control-Allow-Origin": '*',
-                "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
-            },
-            'body': json.dumps(v_list, default=decimal_default_proc, ensure_ascii=False)
-        }
+        return createResponce(200,json.dumps(v_list, default=decimal_default_proc, ensure_ascii=False))
     
     elif pathParam == PATH_PARAMETER_VIDEO and httpMethod == "GET":    # チャンネルの動画を一つ取得
         # https://api.unidule.jp/prd/video?id=L_oVYEVYnI8
@@ -263,8 +404,8 @@ def lambda_handler(event, context):
 
         video_id = event['queryStringParameters']['id']
 
-        table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
-        v_list = getVideoOne(table, video_id)
+        video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        v_list = getVideoOne(video_list_table, video_id)
         
         return {
             'statusCode': 200,
@@ -283,13 +424,13 @@ def lambda_handler(event, context):
 
         video_id = event['queryStringParameters']['id']
 
-        table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
-        v_list = getVideoOne(table, video_id)
+        video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        v_list = getVideoOne(video_list_table, video_id)
 
         item = v_list[0]
         item['isDeleted'] = 'true'
 
-        updateVideoOne(table, item)
+        updateDynamoDBOne(video_list_table, item)
         
         return {
             'statusCode': 201,
@@ -302,9 +443,9 @@ def lambda_handler(event, context):
         }
     elif pathParam == PATH_PARAMETER_CHANNEL_INFO:  # チャンネル情報の取得
         # https://api.unidule.jp/prd/channel_info
-        table = os.environ['DYNAMO_DB_CHANNEL_INFO_TABLE']
+        video_list_table = os.environ['DYNAMO_DB_CHANNEL_INFO_TABLE']
 
-        infos = getChannelInfoDocument(table)
+        infos = getChannelInfoDocument(video_list_table)
 
         return {
             'statusCode': 201,
@@ -321,7 +462,7 @@ def lambda_handler(event, context):
         video_id = event['queryStringParameters']['id']
 
         # 動画情報を入れるDynamoDB
-        table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
 
         # チャンネルオーナー
         channel_owner = event['queryStringParameters']['channel']
@@ -329,7 +470,7 @@ def lambda_handler(event, context):
         youtube = build("youtube", "v3", developerKey = os.environ['YOUTUBE_API_KEY'])
         video = youtubeAPI.get_video_items([video_id],youtube)
 
-        importVideoListDocument(video, table, channel_owner)
+        importVideoListDocument(video, video_list_table, channel_owner)
 
         print('video force update ok',event)
 
@@ -374,9 +515,9 @@ def lambda_handler(event, context):
     elif pathParam == PATH_PARAMETER_SCHEDULE_TWEET:
 
         # ツイッターから取得した予定表ツイートを取得する
-        table = os.environ['DYNAMO_DB_TWITTER_TABLE']
+        video_list_table = os.environ['DYNAMO_DB_TWITTER_TABLE']
 
-        resurt = getScheduleTweetDocument(table)
+        resurt = getScheduleTweetDocument(video_list_table)
 
         return {
                 'statusCode': 200,
@@ -399,8 +540,8 @@ def lambda_handler(event, context):
         # 動画情報をDynamoDBに入れる
         items = getVideoItem([video_id], os.environ['YOUTUBE_API_KEY'])
         items[0] = extendChannelInfo(items[0], os.environ['YOUTUBE_API_KEY'])
-        table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
-        importVideoListDocument(items, table, own)
+        video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        importVideoListDocument(items, video_list_table, own)
 
         print('lambda finish',event,own)
 
@@ -439,3 +580,284 @@ def lambda_handler(event, context):
             'body': json.dumps(items, default=decimal_default_proc, ensure_ascii=False)
             
         }
+    elif pathParam == PATH_PARAMETER_VOICE and httpMethod == "GET":
+        print('音声リスト')
+        items = getVoiceList()
+        return {
+            'statusCode': 200,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT"
+            },
+            'body': json.dumps(items, default=decimal_default_proc, ensure_ascii=False)
+            
+        }
+    elif pathParam == PATH_PARAMETER_VOICE and httpMethod == "POST":
+        print('音声追加リクエスト')
+        print(json.dumps(event))
+
+        headers = event['headers']
+        body = event['body'].encode('utf-8')
+
+        environ = {"REQUEST_METHOD": "POST"}
+        headers = {
+            "content-type": headers['content-type'],
+            "content-length": len(body),
+        }
+        fp = io.BytesIO(body)
+        form = cgi.FieldStorage(fp=fp, environ=environ, headers=headers) # FieldStorageを利用してForm Dataとして扱う
+        url = form.getvalue('url')
+        file = form.getvalue('file')
+        waveBuffer = form.getvalue('waveBuffer')  # カットされたWaveファイル
+
+
+        # 保存するデータ
+        item = {}
+        item['isDenoise'] = False
+        item['title'] =  form.getvalue('title')
+        item['start'] = form.getvalue('start')
+        item['end'] = form.getvalue('end')
+        item['tag'] = form.getvalue('tag')
+        item['channel'] = form.getvalue('channel')
+        item['comment'] = form.getvalue('comment')
+        item['delete_key'] = form.getvalue('delete_key')
+        item['uid'] = str(uuid.uuid4())
+
+
+        # ゆにれいど以外の配信のURLが指定された
+        if (len(item['title']) > 140):
+            return createResponce(400,"タイトルが長すぎます。140文字以下にしてください")
+        if (item['comment'] != None and len(item['comment']) > 500):
+            return createResponce(400,"申し送り事項が長すぎます。もうXでDMしてください")
+
+        if (file!= None and len(file) > 1024*1024*1.5):
+            return createResponce(400,"添付されたファイルのサイズが大きすぎます")
+      
+      
+        item['createdAt'] =  datetime.now(timezone.utc).isoformat()
+
+        print("=== init Param =====================")
+        print(item)
+
+        # URLから動画IDを取得
+        # 共有からの/live/が含まれるものの場合  https://www.youtube.com/live/0Z-VKmkb0wM?si=lQr7c3XgLbDFacxt
+        if('/live/' in url):
+            url = replaceLiveUrl(url)
+
+        item['url'] = url
+
+        o = parse_qsl(urlparse(url).query)
+        video_id = o[0][1]
+
+        # その動画がどのチャンネルの物か判定する
+        video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        video_list = getVideoOne(video_list_table, video_id)
+
+        # ゆにれいど以外の配信のURLが指定された
+        if (len(video_list) == 0):
+            return createResponce(406,"ゆにれいど！関係以外のURLが指定されています")
+
+        # チャンネル未選択の場合は、アーカイブのチャンネルを採用
+        if (item['channel'] == None ) and (len(video_list) != 0):  # 動画があった
+           # チャンネル
+           item['channel'] = video_list[0]['channel']
+
+        # ファイルがあればs3に置く
+        if waveBuffer != None and waveBuffer != "":
+            myUUID = uuid.uuid4()
+            item['filename'] = video_id + '-' + str(myUUID) +'.wav'
+
+            print('===============================================================================')
+            # data:audio/wav;base64,UklGRtStCgBXQVZF
+            # print(waveBuffer)
+            print('===============================================================================')
+            if waveBuffer.startswith('data:audio/wav;base64,'):
+                print("remove removeprefix")
+                waveBuffer = waveBuffer.removeprefix('data:audio/wav;base64,')
+                print(waveBuffer[:64])
+            else:
+                print("non-remove removeprefix")
+
+            bin = base64.b64decode(waveBuffer)
+            s3_client = boto3.client('s3')
+            s3_key = 'res/' + item['channel'] + '/' + item['filename']
+            s3API.putObject(s3_client, 'unidule-release', s3_key, bin, 'audio/wav')
+
+        elif file != None:
+            myUUID = uuid.uuid4()
+            item['filename'] = video_id + '-' + str(myUUID) +'.mp3'
+
+            bin = base64.b64decode(file)
+
+            s3_client = boto3.client('s3')
+            s3_key = 'res/' + item['channel'] + '/' + item['filename']
+            s3API.putObject(s3_client, 'unidule-release', s3_key, bin, 'audio/mpeg')
+        else:
+            # 無ければ no_media フラグ\
+            item['filename'] = ""
+            item['no_media'] = True
+
+        # dynamodbに登録 =============================================
+        print(json.dumps(item))
+        if(putVoiceOne(item) == False):
+            return createResponce(500,"Internal Server Error")
+
+        return createResponce(200,"OKOK")
+
+    elif pathParam == PATH_PARAMETER_VOICE and httpMethod == "DELETE":
+        print('音声削除リクエスト')
+        print(json.dumps(event))
+
+        param = parse_qs(event['body'])
+
+        # dynamoDBのvoie_listテーブルをuidで検索
+        v = getVoiceOne(param['uid'][0])
+        if(v != None):
+            item = v[0]
+            if item['delete_key'] == param['delete_key'][0]:
+                # 削除キーが照合できた場合は論理削除
+                item['isDeleted'] = 'true'
+
+                updateDynamoDBOne(os.environ['DYNAMO_DB_VOICE_LIST_TABLE'],item)
+                print("delete ok")
+            else:
+                print("delete ng")
+                return createResponce(403,"削除キーが合いませんでした")
+
+        return createResponce(404,"削除対象が見つかりませんでした")
+
+
+        
+    
+    elif pathParam == PATH_PARAMETER_RAW_VOICE and httpMethod == "GET":  # Youtubeから音声データを直接取得
+        # URLをデコード
+        url = urllib.parse.unquote(event['queryStringParameters']['video_url'])
+
+        if('/live/' in url):
+            url = replaceLiveUrl(url)
+
+        o = parse_qsl(urlparse(url).query)
+        video_id = o[0][1]
+
+        # その動画がどのチャンネルの物か判定する
+        video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        video_list = getVideoOne(video_list_table, video_id)
+
+        # ゆにれいど以外の配信のURLが指定された
+        if (len(video_list) == 0):
+            return createResponce(406,"ゆにれいど！関係以外のURLが指定されています")
+        
+        start = event['queryStringParameters']['start'].strip()
+        end = event['queryStringParameters']['end'].strip()
+        channel = event['queryStringParameters']['channel']
+
+        if channel == "" or channel == None:
+            channel = video_list[0]['channel']
+
+        uid = str(uuid.uuid4())
+
+        try:
+            hour, minute, second = splite_time(start)
+        except Exception as e:
+            return createResponce(400,"開始時間の解析に失敗しました")
+
+        start_sec = int(timedelta(hours=hour, minutes=minute, seconds=second).total_seconds())
+
+
+        if end == None or end == "":
+            end_sec = start_sec + 10
+        else:
+            try:
+                hour, minute, second = splite_time(end)
+            except Exception as e:
+                # 開始時間の解析に失敗
+                end_sec = start_sec + 10
+
+        end_sec = int(timedelta(hours=hour, minutes=minute, seconds=second).total_seconds())
+
+        if end_sec - start_sec > 60:
+            return createResponce(400,"時間の指定が長すぎます。60秒以内にしてください")
+        
+        # もし開始と終了が一緒だったら終了に1秒足す
+        if end_sec - start_sec == 0:
+            hour, minute, second = splite_time(end)
+            end = str(hour) + ":" + str(minute)  + ":" + str(second + 1)
+
+        # スレッドを生成してそっちでAPIコールを行う
+        # 引数
+        input_event = {
+            "video_id": video_id,
+            "start": start,
+            "end": end,
+            "channel": channel,
+            "uid": uid,
+        }
+
+        Payload = json.dumps(input_event) # jsonシリアライズ
+        print("--- Payload:", Payload)
+        
+        # 非同期Lambda呼び出し
+        response = boto3.client('lambda').invoke(
+            FunctionName='lambda_function_generate_voice_clip',
+            InvocationType='Event',
+            Payload=Payload
+        )
+        print("--- response:", response)
+
+
+        # スレッド側のAPIコールが行われるのを待つ
+        time.sleep(1)
+
+        # 生成したuidを返却
+        return createResponce(201, uid)
+        
+        
+    elif pathParam == PATH_PARAMETER_RAW_VOICE_POOL and httpMethod == "GET":  # オンプレダウンローダーの監視
+        
+        # このuidをキーにs3を検索する
+        uid = urllib.parse.unquote(event['queryStringParameters']['uid'])
+        channel = urllib.parse.unquote(event['queryStringParameters']['channel'])
+
+        s3_client = boto3.client('s3')
+        fileKey = s3API.getRawVideoFileKey(s3_client, channel + '/' + uid )
+
+        dic = {}
+        dic['uid'] = uid
+        dic['channel'] = channel
+        dic['filekey'] = fileKey
+
+        try:
+            VOICE_SERVER = 'https://unidule.net:34449'
+            res = requests.get(
+                VOICE_SERVER,
+                auth=HTTPBasicAuth(
+                    os.environ['RAW_VIDEO_USER_ID'], 
+                    os.environ['RAW_VIDEO_PASSWORD']
+                )
+            )
+            
+            if res.status_code == 200:
+                dic['progress'] = res.text
+            else:
+                dic['progress'] = str(res.status_code) + ':' + res.reason
+
+        except Exception as e:
+            print('=== yt_dlp_status Error =============')
+            print(e)
+
+
+        return {
+            'headers': {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT"
+            },
+            'statusCode': 200,
+            'body': json.dumps(dic, default=decimal_default_proc, ensure_ascii=False),
+            'isBase64Encoded': False
+
+        }
+
+
