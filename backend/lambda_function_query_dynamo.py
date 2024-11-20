@@ -16,13 +16,15 @@ from googleapiclient.discovery import build
 from boto3.dynamodb.conditions import Key, Attr
 import json
 
-import requests
 import urllib
 from lambda_function_update_dynamo import importVideoListDocument
 from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE, PATH_PARAMETER_RAW_VOICE, PATH_PARAMETER_RAW_VOICE_POOL
 from util import decimal_default_proc
+from util import splite_time
+
 import youtubeAPI
 import s3API
+import requests
 from requests.auth import HTTPBasicAuth
 
 from datetime import datetime, timezone, timedelta
@@ -34,7 +36,6 @@ VOICE_SERVER = 'https://unidule.net:34449/uwsgi_yt_dlp'
 
 print('Loading function')
 dynamodb = boto3.resource('dynamodb')
-s3 = boto3.resource('s3')
 
 ################################################################################################
 # DynamoDBから動画リストの取得
@@ -608,12 +609,15 @@ def lambda_handler(event, context):
         form = cgi.FieldStorage(fp=fp, environ=environ, headers=headers) # FieldStorageを利用してForm Dataとして扱う
         url = form.getvalue('url')
         file = form.getvalue('file')
+        waveBuffer = form.getvalue('waveBuffer')  # カットされたWaveファイル
+
 
         # 保存するデータ
         item = {}
         item['isDenoise'] = False
         item['title'] =  form.getvalue('title')
         item['start'] = form.getvalue('start')
+        item['end'] = form.getvalue('end')
         item['tag'] = form.getvalue('tag')
         item['channel'] = form.getvalue('channel')
         item['comment'] = form.getvalue('comment')
@@ -660,12 +664,35 @@ def lambda_handler(event, context):
            item['channel'] = video_list[0]['channel']
 
         # ファイルがあればs3に置く
-        if file != None:
+        if waveBuffer != None and waveBuffer != "":
+            myUUID = uuid.uuid4()
+            item['filename'] = video_id + '-' + str(myUUID) +'.wav'
+
+            print('===============================================================================')
+            # data:audio/wav;base64,UklGRtStCgBXQVZF
+            # print(waveBuffer)
+            print('===============================================================================')
+            if waveBuffer.startswith('data:audio/wav;base64,'):
+                print("remove removeprefix")
+                waveBuffer = waveBuffer.removeprefix('data:audio/wav;base64,')
+                print(waveBuffer[:64])
+            else:
+                print("non-remove removeprefix")
+
+            bin = base64.b64decode(waveBuffer)
+            s3_client = boto3.client('s3')
+            s3_key = 'res/' + item['channel'] + '/' + item['filename']
+            s3API.putObject(s3_client, 'unidule-release', s3_key, bin, 'audio/wav')
+
+        elif file != None:
             myUUID = uuid.uuid4()
             item['filename'] = video_id + '-' + str(myUUID) +'.mp3'
 
             bin = base64.b64decode(file)
-            s3API.putFile(s3,'unidule-release','res/' + item['channel'] + '/' + item['filename'], bin )
+
+            s3_client = boto3.client('s3')
+            s3_key = 'res/' + item['channel'] + '/' + item['filename']
+            s3API.putObject(s3_client, 'unidule-release', s3_key, bin, 'audio/mpeg')
         else:
             # 無ければ no_media フラグ\
             item['filename'] = ""
@@ -699,13 +726,11 @@ def lambda_handler(event, context):
                 return createResponce(403,"削除キーが合いませんでした")
 
         return createResponce(404,"削除対象が見つかりませんでした")
+
+
+        
     
     elif pathParam == PATH_PARAMETER_RAW_VOICE and httpMethod == "GET":  # Youtubeから音声データを直接取得
-        ev_loop = asyncio.get_event_loop()
-        ev_thread = Thread(
-            target = begin_ev_thread, args=(ev_loop,), daemon=False)
-        ev_thread.start()
-
         # URLをデコード
         url = urllib.parse.unquote(event['queryStringParameters']['video_url'])
 
@@ -714,44 +739,78 @@ def lambda_handler(event, context):
 
         o = parse_qsl(urlparse(url).query)
         video_id = o[0][1]
-        start = event['queryStringParameters']['start']
+
+        # その動画がどのチャンネルの物か判定する
+        video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        video_list = getVideoOne(video_list_table, video_id)
+
+        # ゆにれいど以外の配信のURLが指定された
+        if (len(video_list) == 0):
+            return createResponce(406,"ゆにれいど！関係以外のURLが指定されています")
+        
+        start = event['queryStringParameters']['start'].strip()
+        end = event['queryStringParameters']['end'].strip()
         channel = event['queryStringParameters']['channel']
+
+        if channel == "" or channel == None:
+            channel = video_list[0]['channel']
 
         uid = str(uuid.uuid4())
 
+        try:
+            hour, minute, second = splite_time(start)
+        except Exception as e:
+            return createResponce(400,"開始時間の解析に失敗しました")
+
+        start_sec = int(timedelta(hours=hour, minutes=minute, seconds=second).total_seconds())
+
+
+        if end == None or end == "":
+            end_sec = start_sec + 10
+        else:
+            try:
+                hour, minute, second = splite_time(end)
+            except Exception as e:
+                # 開始時間の解析に失敗
+                end_sec = start_sec + 10
+
+        end_sec = int(timedelta(hours=hour, minutes=minute, seconds=second).total_seconds())
+
+        if end_sec - start_sec > 60:
+            return createResponce(400,"時間の指定が長すぎます。60秒以内にしてください")
+        
+        # もし開始と終了が一緒だったら終了に1秒足す
+        if end_sec - start_sec == 0:
+            hour, minute, second = splite_time(end)
+            end = str(hour) + ":" + str(minute)  + ":" + str(second + 1)
+
         # スレッドを生成してそっちでAPIコールを行う
-        asyncio.run_coroutine_threadsafe(CallRawVideoDownloader(video_id, start, channel, uid), ev_loop)
+        # 引数
+        input_event = {
+            "video_id": video_id,
+            "start": start,
+            "end": end,
+            "channel": channel,
+            "uid": uid,
+        }
+
+        Payload = json.dumps(input_event) # jsonシリアライズ
+        print("--- Payload:", Payload)
+        
+        # 非同期Lambda呼び出し
+        response = boto3.client('lambda').invoke(
+            FunctionName='lambda_function_generate_voice_clip',
+            InvocationType='Event',
+            Payload=Payload
+        )
+        print("--- response:", response)
+
 
         # スレッド側のAPIコールが行われるのを待つ
-        time.sleep(3)
-        # ---------------------------------------------------
-        # イベントループを停止
-        # ---------------------------------------------------
-        print('==> event loop stop')
-        ev_loop.call_soon_threadsafe(ev_loop.stop)
-        print('==> main-thread end')
+        time.sleep(1)
 
         # 生成したuidを返却
         return createResponce(201, uid)
-
-
-
-
-    # elif pathParam == PATH_PARAMETER_RAW_VOICE_POOL and httpMethod == "GET":  # Waveファイルのダウンロード
-        
-    #     # このuidをキーにs3を検索する
-    #     uid = urllib.parse.unquote(event['queryStringParameters']['uid'])
-    #     channel = urllib.parse.unquote(event['queryStringParameters']['channel'])
-
-    #     s3 = boto3.client('s3')
-    #     bin = s3API.getRawVideoFile(s3, channel + '/' + uid )
-
-    #     return {
-    #         'headers': { "Content-Type": "audio/wav" },
-    #         'statusCode': 200,
-    #         'body': base64.b64encode(bin).decode('utf-8'),
-    #         'isBase64Encoded': True
-    #     }
         
         
     elif pathParam == PATH_PARAMETER_RAW_VOICE_POOL and httpMethod == "GET":  # オンプレダウンローダーの監視
@@ -760,13 +819,33 @@ def lambda_handler(event, context):
         uid = urllib.parse.unquote(event['queryStringParameters']['uid'])
         channel = urllib.parse.unquote(event['queryStringParameters']['channel'])
 
-        s3 = boto3.client('s3')
-        fileKey = s3API.getRawVideoFileKey(s3, channel + '/' + uid )
+        s3_client = boto3.client('s3')
+        fileKey = s3API.getRawVideoFileKey(s3_client, channel + '/' + uid )
 
         dic = {}
         dic['uid'] = uid
         dic['channel'] = channel
         dic['filekey'] = fileKey
+
+        try:
+            VOICE_SERVER = 'https://unidule.net:34449'
+            res = requests.get(
+                VOICE_SERVER,
+                auth=HTTPBasicAuth(
+                    os.environ['RAW_VIDEO_USER_ID'], 
+                    os.environ['RAW_VIDEO_PASSWORD']
+                )
+            )
+            
+            if res.status_code == 200:
+                dic['progress'] = res.text
+            else:
+                dic['progress'] = str(res.status_code) + ':' + res.reason
+
+        except Exception as e:
+            print('=== yt_dlp_status Error =============')
+            print(e)
+
 
         return {
             'headers': {

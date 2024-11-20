@@ -42,6 +42,11 @@ def splite_time(time_str):
     return hour, minute, second
 
 
+def getParamForKey(params,key):
+    for item in params:
+         if item[0] == key:
+              return item[1]
+    return None
 
 def application(env, start_response):
     print('exec application')
@@ -54,10 +59,11 @@ def application(env, start_response):
         return [b'500 Internal Server Error']
 
     param = parse_qsl(env['QUERY_STRING'])
-    video_id = param[0][1]  # video_id
-    start_time_str = param[1][1]  # start
-    channel = param[2][1]  # channel
-    uid = param[3][1]  # uid
+    video_id = getParamForKey(param, 'video_id')  # video_id
+    start_time_str = getParamForKey(param, 'start')  # start
+    end_time_str = getParamForKey(param, 'end')  # end
+    channel = getParamForKey(param, 'channel')  # channel
+    uid = getParamForKey(param, 'uid')  # uid
     
     try:
         hour, minute, second = splite_time(start_time_str)
@@ -66,10 +72,25 @@ def application(env, start_response):
     
         start_response('400 Bad Request', [('Content-Type','text/html')])
         return [e.message]
+    start = int(datetime.timedelta(hours=hour, minutes=minute, seconds=second).total_seconds())
+    
+    # endの解析に失敗したらstart+10秒
+    try:
+        hour, minute, second = splite_time(end_time_str)
+        end = int(datetime.timedelta(hours=hour, minutes=minute, seconds=second).total_seconds())
+    except Exception as e:
+        print(e)
+        end = start + 10
+
+    # 1分以上はNG
+    if end - start > 60:
+        start_response('400 Bad Request', [('Content-Type','text/html')])
+        return ["Time length is too long"]
+
+
 
     url =  "https://www.youtube.com/watch?v=" + video_id
-    start = int(datetime.timedelta(hours=hour, minutes=minute, seconds=second).total_seconds())
-    end = start + 10
+
 
     # o = parse_qsl(urlparse(url).query)
     # video_id = o[0][1]

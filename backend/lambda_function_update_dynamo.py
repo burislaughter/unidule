@@ -52,7 +52,7 @@ def getStartAt(item):
 # channel_owner ... チャンネル所有者名
 # force ... 処理済の重複チェックをせず全IDを取得
 #################################################################################################
-def getVideoListFromYT(devKey, table, channel_owner,is_force):
+def getVideoListFromYT(devKey, table, channel_owner,is_force, is_once=True):
     print('getVideoListFromYT start')
     p_list_id = owner_to_pid(channel_owner)
     
@@ -64,12 +64,12 @@ def getVideoListFromYT(devKey, table, channel_owner,is_force):
     youtube = build("youtube", "v3", developerKey = devKey)
 
     # チャンネルの新着動画ID一覧の取得
-    v_id_list = youtubeAPI.get_video_id_in_playlist(p_list_id, youtube, True)
+    v_id_list = youtubeAPI.get_video_id_in_playlist(p_list_id, youtube, is_once)
 
     # メン限
     p_list_mem = owner_to_member_only(channel_owner)
     # チャンネルの新着動画ID一覧の取得
-    v_id_list_mem = youtubeAPI.get_video_id_in_playlist(p_list_mem, youtube, True)
+    v_id_list_mem = youtubeAPI.get_video_id_in_playlist(p_list_mem, youtube, is_once)
 
     # メン限の動画IDをマージ
     if v_id_list_mem:
@@ -334,9 +334,10 @@ def lambda_handler(event, context):
         channel_owner = event['channel']
 
         is_force = event['force'] if 'force' in event else ""
+        is_once = event['once'] if 'once' in event else True
 
         # Youtubeから動画情報の取得
-        v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'],os.environ['DYNAMO_DB_IDS_TABLE'], channel_owner, is_force)
+        v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'],os.environ['DYNAMO_DB_IDS_TABLE'], channel_owner, is_force, is_once)
 
         if len(v_list) != 0:
             # 動画情報をDynamoDBに入れる

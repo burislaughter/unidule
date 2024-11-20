@@ -1,15 +1,61 @@
 import os
+from urllib.parse import  parse_qsl, urlparse
+import uuid
 
-import yt_dlp
-import shutil
-from yt_dlp.utils import download_range_func
-from urllib.parse import urlparse
-from urllib.parse import parse_qsl
-import tempfile
+import urllib
+import requests
+from requests.auth import HTTPBasicAuth
 
-print('Loading function')
-# dynamodb = boto3.resource('dynamodb')
 
+################################################################################################
+# レスポンスの作成
+#################################################################################################
+def createResponce(status,messsage):
+    return {
+        'statusCode': status,
+        'headers': {
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Origin": '*',
+            "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+        },
+        'body': messsage
+    }
+
+
+
+# 音声抽出用サーバーURL
+VOICE_SERVER = 'https://unidule.net:34449/uwsgi_yt_dlp'
+
+################################################################################################
+# https://www.youtube.com/live/xxxxx のURLを 
+# https://www.youtube.com/watch?v=xxxx のURLに変更する
+#################################################################################################
+def replaceLiveUrl(url):
+    p = urlparse(url)
+    # print(p[2])
+    url = p[2].replace('/live/', 'https://www.youtube.com/watch?v=')
+    return url
+
+
+################################################################################################
+# オンプレ側Youtubeダウンロ―ダー呼び出しを非同期化したもの
+################################################################################################
+def CallRawVideoDownloader(video_id, start, end, channel, uid):
+
+    requests.get(
+        VOICE_SERVER,
+        params={
+            'video_id':video_id,
+            'start':start,
+            'end':end,
+            'channel':channel,
+            'uid':uid,
+        },
+        auth=HTTPBasicAuth(
+            os.environ['RAW_VIDEO_USER_ID'], 
+            os.environ['RAW_VIDEO_PASSWORD']
+        )
+    )
 
 
 ################################################################################################
@@ -17,48 +63,20 @@ print('Loading function')
 #################################################################################################
 def lambda_handler(event, context):
 
-    url =  "https://www.youtube.com/watch?v=pFa-jpqGlxo"
-    start = 927
-    end = start + 6
+    video_id =event['video_id']
+    start = event['start']
+    end = event['end']
+    channel = event['channel']
+    uid = event['uid']
 
-    o = parse_qsl(urlparse(url).query)
-    video_id = o[0][1]
-    output_name = video_id + '-' + str(start) + '-' + str(end) 
-
-    # 一時ディレクトリを作って、使い終わったら破棄する
-    with tempfile.TemporaryDirectory() as tmpdir:
-
-        f_path = os.path.join(tmpdir, output_name)
-        print(tmpdir)
-        print(f_path)
-
-        option = {
-            "download_ranges": download_range_func(None, [(start, end)]),
-            'force_keyframes_at_cuts': True, # for yt links
-            'outtmpl': f_path + '.%(ext)s', 
-            'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-            }],
-            'postprocessor_args': [
-                '-ar', '44100',
-                '-ac', '2',
-                '-ab', '256k',
-                '-acodec', 'libmp3lame',
-                '-f', 'mp3', #for other platforms which uses .m4a
-            ],
-            'prefer_ffmpeg': True
-        }
-
-        # /opt/bin/ffmpeg
-        with yt_dlp.YoutubeDL(option) as ydl:
-            ydl.download([url])
+    # スレッドを生成してそっちでAPIコールを行う
+    CallRawVideoDownloader(video_id, start, end, channel, uid)
 
 
-        # shutil.copy2( f_path + ".mp3", '/home/masanori.nakajima/') # 引数はコピー元、コピー先の順
-        print( f_path + ".mp3" )
+    # 生成したuidを返却
+    return createResponce(201, uid)
 
 
-    return (f_path + ".mp3").encode()
+
 
 

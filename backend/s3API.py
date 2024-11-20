@@ -50,13 +50,25 @@ def getRawVideoFileKey(s3, find_key):
 
 ####################################################
 ####################################################
-def putFile(s3, bucket,key, body):
+def putFile(s3, bucket,key, body, minetype):
     bucket = s3.Bucket(bucket)
     
     bucket.put_object(
         Key = key,
         Body = body,
-        ContentType='audio/mpeg'
+        ContentType=minetype
     )
     
 
+
+####################################################
+####################################################
+def putObject(s3Client,bucket, key, body, minetype):
+    
+    s3Client.put_object(
+        Key = key,
+        Bucket = bucket,
+        Body = body,
+        ContentType=minetype
+    )
+    
