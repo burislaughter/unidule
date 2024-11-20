@@ -4,94 +4,34 @@ import { useRef, useEffect, useState } from "react";
 
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions";
-import path from "path";
+import { makeWav } from "../const";
 
 export type EditWaveProps = {
   url: string;
-  title: string;
-  channel: string;
-};
-
-/****************************************************************
- * AudioBuffer を Blob に変換
- ****************************************************************/
-const makeWav = (src: AudioBuffer | Tone.ToneAudioBuffer) => {
-  const numOfChan = src.numberOfChannels;
-  const length = src.length * numOfChan * 2 + 44;
-  const buffer = new ArrayBuffer(length);
-
-  const setUint16 = (view: DataView, offset: number, data: number) => {
-    view.setUint16(offset, data, true);
-    return offset + 2;
-  };
-
-  const setUint32 = (view: DataView, offset: number, data: number) => {
-    view.setUint32(offset, data, true);
-    return offset + 4;
-  };
-
-  const writeString = (view: DataView, offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) {
-      view.setUint8(offset + i, str.charCodeAt(i));
-    }
-    return offset + str.length;
-  };
-
-  // WAVEファイルのヘッダー作成
-  let pos = 0;
-  const view = new DataView(buffer);
-  pos = writeString(view, pos, "RIFF"); // "RIFF"
-  pos = setUint32(view, pos, length - 8); // file length - 8
-  pos = writeString(view, pos, "WAVE"); // "WAVE"
-
-  pos = writeString(view, pos, "fmt "); // "fmt " chunk
-  pos = setUint32(view, pos, 16); // length = 16
-  pos = setUint16(view, pos, 1); // PCM (uncompressed)
-  pos = setUint16(view, pos, numOfChan);
-  pos = setUint32(view, pos, src.sampleRate);
-  pos = setUint32(view, pos, src.sampleRate * 2 * numOfChan); // avg. bytes/sec
-  pos = setUint16(view, pos, numOfChan * 2); // block-align
-  pos = setUint16(view, pos, 16); // 16-bit
-
-  pos = writeString(view, pos, "data"); // "data" - chunk
-  pos = setUint32(view, pos, length - pos - 4); // chunk length
-
-  // write interleaved data
-  const channels = [];
-  for (let i = 0; i < src.numberOfChannels; i++) channels.push(src.getChannelData(i));
-
-  let offset = 0;
-  while (pos < length) {
-    for (let i = 0; i < numOfChan; i++) {
-      // 波形の再生位置ごとに左右のチャンネルのデータを設定していく
-      const sample = Math.max(-1, Math.min(1, (channels[i] ?? [])[offset] ?? 0)); // 波形データを-1~1の間に丸め込む(おそらく最大最小を求め、全区間をその数で割って正規化するのが良いかも)
-      const sample16bit = (0.5 + sample < 0 ? sample * 0x8000 : sample * 0x7fff) | 0; // 32bit不動小数点を16bit整数に丸め込む
-      view.setInt16(pos, sample16bit, true); // データ書き込み
-      pos += 2;
-    }
-    offset++;
-  }
-
-  return new Blob([buffer], { type: "audio/wav" });
+  setBuffer: any;
+  setRange: any;
 };
 
 /****************************************************************
  * 波形編集コントロール
  ****************************************************************/
-export const EditWave = ({ url, title, channel }: EditWaveProps) => {
-  const [loop, setLoop] = useState(false);
+export const EditWave = ({ url, setBuffer, setRange }: EditWaveProps) => {
+  // const [activeRegion, setActiveRegion] = useState<any>();
+  // const [activeRegionClickTime, setActiveRegionClickTime] = useState<number>(0);
 
-  // const url = URL_RES + channel + "/" + filename;
-  // const url = "http://localhost:3000/res/" + channel + "/" + filename;
+  const waveformRef = useRef<any>(null);
+  const activeRegion = useRef<any>(null);
+  const activeRegionClickTime = useRef<any>(null);
+  const playState = useRef<boolean>(false);
 
-  // url = "http://localhost:3000/res/maru/03ari.mp3";
-  url = "http://localhost:3000/raw/nagisa/4a3d654d-7a7a-422e-95a1-1c3f7c51413e_0vqOUZzHYlw-1221-1231.wav";
+  const [fixState, setFixState] = useState<boolean>(false);
 
   const masterBuffer = new Tone.ToneAudioBuffer(url, () => {
     console.log("loaded");
     // 読み込んだら再生コントロールに紐づけ
     player.buffer.set(masterBuffer);
 
+    setBuffer(player.buffer);
     waveformRef.current.load(url);
   });
 
@@ -101,128 +41,114 @@ export const EditWave = ({ url, title, channel }: EditWaveProps) => {
     console.log("tone load ok");
   });
 
-  const waveformRef = useRef<any>(null);
-
   // 範囲選択プラグイン
   const regions = RegionsPlugin.create();
 
-  let activeRegion: any = null;
-  let activeRegionClickTime: any = null;
-
   useEffect(() => {
     // wavesurfer.jsがオーディオファイルをコントロールするためのオブジェクトを作成
-    // waveformRef.currentに入れる
     waveformRef.current = WaveSurfer.create({
       container: waveformRef.current,
       plugins: [regions],
     });
-    waveformRef.current.on("decode", () => {
-      activeRegion = regions.addRegion({
-        start: 0,
-        end: 1,
+    waveformRef.current.on("decode", (duration: number) => {
+      if (regions?.getRegions().length != 0) {
+        regions.clearRegions();
+      }
+
+      // 初期選択範囲を一つだけ作成
+      const reg = regions.addRegion({
+        start: duration * 0.05,
+        end: duration - duration * 0.05,
         content: "切り抜き範囲",
         color: "rgba(255, 200,0, 0.2)",
-        drag: true,
+        drag: false,
         resize: true,
       });
+      activeRegion.current = reg;
+
+      // 範囲情報保持
+      setRange(reg);
     });
 
-    // regions.enableDragSelection({
-    //   color: "rgba(255, 0, 0, 0.1)",
-    // });
-
+    // 範囲更新
     regions.on("region-updated", (region) => {
-      console.log("Updated region", region);
+      console.log("範囲更新", region);
+      // setFixState(false);
+      setRange(region);
     });
 
     regions.on("region-in", (region) => {
       console.log("region-in", region);
-      activeRegion = region;
+      playState.current = true;
     });
+
     regions.on("region-out", (region) => {
       console.log("region-out", region);
-      if (activeRegion === region) {
-        const sub = Date.now() - activeRegionClickTime;
+      if (activeRegion.current === region) {
+        const sub = Date.now() - activeRegionClickTime.current;
         if (sub > 100) {
           // 0.1秒以上
-          // region.play();
           waveformRef.current.pause();
+          playState.current = false;
         }
       }
     });
-    regions.on("region-clicked", (region, e) => {
-      e.stopPropagation(); // prevent triggering a click on the waveform
-      region.play();
-      activeRegion = region;
-      activeRegionClickTime = Date.now();
+    // regions.on("region-clicked", (region, e) => {
+    //   e.stopPropagation(); // prevent triggering a click on the waveform
+    //   region.play();
+    //   activeRegion.current = region;
+    //   activeRegionClickTime.current = Date.now();
+    // });
 
-      // region.setOptions({ color: randomColor() });
-    });
-    // Reset the active region when the user clicks anywhere in the waveform
-    waveformRef.current.on("interaction", () => {
-      activeRegion = null;
-    });
+    console.log("Add Event");
   }, []);
-
-  const random = (min: number, max: number) => Math.random() * (max - min) + min;
-  const randomColor = () => `rgba(${random(0, 255)}, ${random(0, 255)}, ${random(0, 255)}, 0.5)`;
 
   return (
     <>
       {/* 波形表示 */}
-      <Box ref={waveformRef} sx={{ width: "500px" }}></Box>
+      <Box ref={waveformRef} sx={{ width: "100%", marginX: "10px" }}></Box>
 
       <Button
         variant="contained"
         onMouseUp={() => {
-          activeRegion.play();
-          activeRegionClickTime = Date.now();
-
-          // waveformRef.current.play();
-          // player.start();
-          // player.onstop = async () => {
-          //   console.log("player1 stopped");
-          // };
-        }}
-        sx={{ backgroundColor: "#00A39E", color: "#FFFFFF", fontSize: "1rem" }}
-      >
-        再生
-      </Button>
-
-      {/* <Button
-        variant="contained"
-        onMouseUp={() => {
-          const buffer = masterBuffer.slice(0.95, 2.0);
-          player.buffer.set(buffer);
-        }}
-        sx={{ backgroundColor: "#00A39E", color: "#FFFFFF", fontSize: "1rem" }}
-      >
-        トリミング
-      </Button> */}
-
-      <Button
-        variant="contained"
-        onMouseUp={() => {
-          const buffer = player.buffer.get();
-          if (typeof buffer !== "undefined") {
-            const tmpFileUrl = URL.createObjectURL(makeWav(buffer));
-
-            // wavファイルで保存
-            // const name = filename.split(".").slice(0, -1).join(".");
-            // URLからファイル名を生成
-            // const name = path.basename(url);
-            const name = url;
-
-            const anchor = document.createElement("a");
-            anchor.download = name + ".wav";
-            anchor.href = tmpFileUrl;
-            anchor.click();
+          if (playState.current) {
+            playState.current = false;
+            waveformRef.current.pause();
+          } else {
+            activeRegion.current.play();
+            playState.current = true;
+            activeRegionClickTime.current = Date.now();
           }
         }}
         sx={{ backgroundColor: "#00A39E", color: "#FFFFFF", fontSize: "1rem" }}
       >
-        保存
+        PLAY
       </Button>
+
+      <Button
+        variant="contained"
+        onMouseUp={() => {
+          const buffer = player.buffer?.slice(activeRegion.current.start, activeRegion.current.end)?.get();
+
+          if (typeof buffer !== "undefined") {
+            // Blobを関連付け
+            // setBuffer(makeWav(buffer));
+            // ボタンのステートを変えると再描画してしまう
+            // setFixState(true);
+            // wavファイルで保存
+            // const name = url;
+            // const anchor = document.createElement("a");
+            // anchor.download = name + ".wav";
+            // anchor.href = tmpFileUrl;
+            // anchor.click();
+          }
+        }}
+        // sx={{ backgroundColor: fixState == false ? "#F3F3E7" : "#EE6B4B", color: fixState == false ? "#3D4848" : "#FFFFFF", fontSize: "1rem" }}
+        sx={{ backgroundColor: "#EE6B4B", color: "#FFFFFF", fontSize: "1rem" }}
+      >
+        決定
+      </Button>
+      <Typography>切り抜く範囲が決まったら決定ボタンを押してください</Typography>
     </>
   );
 };

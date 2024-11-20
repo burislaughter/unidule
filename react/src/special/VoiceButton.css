@@ -15,16 +15,16 @@
 
 .flex-wrap {
   display: flex;
-  outline: auto;
+  /* outline: auto; */
 }
 .left-column {
   white-space: nowrap;
-  background-color: #ccc;
-  outline: auto;
+  /* background-color: #ccc; */
+  /* outline: auto; */
   padding: 10px;
 }
 .right-column {
   width: 100%;
-  background-color: #eee;
+  /* background-color: #eee; */
   padding: 10px;
 }

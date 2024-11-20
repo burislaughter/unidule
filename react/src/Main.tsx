@@ -17,7 +17,7 @@ import { Summary } from "./Summary";
 import { ReadMe } from "./ReadMe";
 import { useNavigate } from "react-router-dom";
 
-const buildDate = "2024.10.28";
+const buildDate = "2024.11.16";
 
 const HeaderBox = styled(Box)({
   paddingTop: 8,

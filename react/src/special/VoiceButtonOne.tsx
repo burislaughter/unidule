@@ -3,13 +3,14 @@ import useSound from "use-sound";
 import { getUniBgColor, getUniBtnColor, getUniDarkColor, URL_BASE, URL_RES } from "../const";
 import "./VoiceButtonOne.css";
 import { Cancel as CloseIcon } from "@mui/icons-material";
+import { StopCircle as StopCircleIcon } from "@mui/icons-material";
 import { Fragment } from "react/jsx-runtime";
 import { MouseEventHandler, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { DeleteKeyContext, DeleteModeFlagContext, VolumeContext } from "./VoiceButton";
 import axios from "axios";
 import { AxiosRequestConfig } from "axios";
 
-import AcUnitIcon from "@mui/icons-material/AcUnit"; // 渚 snow
+import AcUnitIcon from "@mui/icons-material/AcUnit";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { FaGhost } from "react-icons/fa";
@@ -18,8 +19,8 @@ import { FaRegSnowflake } from "react-icons/fa";
 import { LuFlower } from "react-icons/lu";
 import { IoDiamondOutline } from "react-icons/io5";
 import { SiThunderbird } from "react-icons/si";
-import useInterval from "./useInterval";
 import chroma from "chroma-js";
+import useSWR from "swr";
 
 const FormData = require("form-data");
 export type VoiceButtonOneProps = {
@@ -27,7 +28,14 @@ export type VoiceButtonOneProps = {
   title: string;
   channel: string;
   uid: string;
+  isDenoise: boolean;
   reLoadFunc: any;
+  isAdmin: boolean;
+  selectVoice: any;
+  archiveUrl: string;
+  start: string;
+  end: string;
+  setYtPalyerShotState: any;
 };
 const VOICE_LIST_URL = URL_BASE + "voice";
 
@@ -48,12 +56,23 @@ const getIcons = (channel: string) => {
   }
 };
 
-export const VoiceButtonOne = ({ filename, title, channel, uid, reLoadFunc }: VoiceButtonOneProps) => {
+export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoadFunc, isAdmin, selectVoice, archiveUrl, start, end, setYtPalyerShotState }: VoiceButtonOneProps) => {
   const url = URL_RES + channel + "/" + filename;
 
   const deleteModeCtx = useContext(DeleteModeFlagContext);
   const deleteKeyCtx = useContext(DeleteKeyContext);
   const VolumeCtx = useContext(VolumeContext);
+
+  const btnProperty = {
+    filename: filename,
+    title: title,
+    channel: channel,
+    isDenoise: isDenoise,
+    uid: uid,
+    archiveUrl: archiveUrl,
+    start: start,
+    end: end,
+  };
 
   const [play, { stop }] = useSound(url, {
     volume: VolumeCtx / 100,
@@ -62,12 +81,12 @@ export const VoiceButtonOne = ({ filename, title, channel, uid, reLoadFunc }: Vo
       setPlayState(false);
     },
   });
-  const isNoSound = filename != undefined && filename != "";
+  const hasSound = filename != undefined && filename != "";
 
   const [playState, setPlayState] = useState(false); // 再生状態
-  const btnColor = isNoSound ? getUniBtnColor(channel) : getUniDarkColor(channel);
+  const btnColor = hasSound ? (isDenoise ? getUniBtnColor(channel) : chroma(getUniBtnColor(channel)).desaturate(0.7).brighten(0.6).css()) : getUniDarkColor(channel);
 
-  const btnDelColor = chroma(getUniBtnColor(channel)).darken(1.8);
+  const btnDelColor = chroma(getUniBtnColor(channel)).darken(1.8).css();
 
   const uidRef = useRef("");
   uidRef.current = uid;
@@ -96,6 +115,7 @@ export const VoiceButtonOne = ({ filename, title, channel, uid, reLoadFunc }: Vo
       </IconButton>
     </Fragment>
   );
+  let isCallFirst = true;
 
   // 送信
   const SendDeleteRequest = async (data: any) => {
@@ -140,6 +160,16 @@ export const VoiceButtonOne = ({ filename, title, channel, uid, reLoadFunc }: Vo
   };
 
   // バックエンドに削除リクエストを行う
+  const handleStopButtonClick = useCallback(
+    (e: any) => {
+      stop();
+      setPlayState(false);
+      e.stopPropagation();
+    },
+    [stop]
+  );
+
+  // バックエンドに削除リクエストを行う
   const handleDelButtonClick = useCallback(
     (e: any) => {
       console.log("uid" + uidRef.current);
@@ -156,18 +186,73 @@ export const VoiceButtonOne = ({ filename, title, channel, uid, reLoadFunc }: Vo
     [deleteKeyCtx]
   );
 
+  // マウスを押している時間をカウント
+  const [propertyShow, setPropertyShow] = useState(false);
+
+  // マウスを押している時間をカウント
+  const [pollingCt, setPollingCt] = useState(0);
+
+  // ポーリング感覚 ms
+  const [pollingInterval, setPollingInterval] = useState(0);
+
+  // ポーリング実行関数
+  const pollingFuncCB = () => {
+    if (pollingInterval == 0) {
+      return;
+    }
+    console.log("カウントアップ" + isCallFirst + " " + pollingCt);
+    setPollingCt((_c) => _c + 1);
+  };
+
+  // ポーリング実行Hools
+  useSWR("dmy2", pollingFuncCB, {
+    refreshInterval: pollingInterval,
+  });
+
+  // マウスの押時間で処理
+  useEffect(() => {
+    if (pollingCt >= 1) {
+      console.log("1秒");
+      setPropertyShow(true);
+      setPollingInterval(0);
+      setYtPalyerShotState(true);
+    }
+  }, [pollingCt]);
+
   return (
     <Box sx={{ display: "inline-block", position: "relative" }}>
       <Button
-        disabled={!isNoSound}
+        disabled={!hasSound && !isAdmin}
         variant="contained"
-        onMouseUp={() => {
-          if (!playState) {
-            play();
-            setPlayState(true);
-          } else {
-            stop();
-            play();
+        onPointerUp={() => {
+          console.log("ポイントアップ");
+          // 長押していた場合はキャンセル
+          if (pollingCt == 0) {
+            if (!playState) {
+              play();
+              setPlayState(true);
+            } else {
+              stop();
+              play();
+            }
+          }
+
+          setPollingInterval(0);
+        }}
+        onPointerDown={() => {
+          // カウント開始
+          console.log("ポイントダウン");
+          setPollingCt(0);
+          setPollingInterval(1000);
+          selectVoice(btnProperty);
+        }}
+        onPointerMove={(event) => {
+          console.log("ポイントムーブ");
+
+          // 移動があったらキャンセル
+          if (pollingInterval > 0 && (Math.abs(event.movementY) > 2 || Math.abs(event.movementX) > 2)) {
+            setPollingInterval(0);
+            console.log("ポイントムーブ キャンセル");
           }
         }}
         sx={{
@@ -181,8 +266,15 @@ export const VoiceButtonOne = ({ filename, title, channel, uid, reLoadFunc }: Vo
         {playState && channel == "ida" && <Box sx={{ width: "32px", height: "32px", position: "absolute", animation: "3s linear infinite rotation-r" }}>{getIcons(channel)}</Box>}
         {playState && channel != "ida" && <Box sx={{ width: "32px", height: "32px", position: "absolute", animation: "3s linear infinite rotation" }}>{getIcons(channel)}</Box>}
       </Button>
+      {/* 停止ボタン */}
+      {playState && (
+        <IconButton size="small" aria-label="stop" onMouseUp={handleStopButtonClick} sx={{ position: "absolute", right: "-10px", bottom: "-10px", color: btnDelColor }}>
+          <StopCircleIcon fontSize="medium" />
+        </IconButton>
+      )}
+
       {deleteModeCtx && (
-        <IconButton size="small" aria-label="close" onMouseUp={handleDelButtonClick} sx={{ position: "absolute", right: "-10px", top: "-10px", color: btnDelColor.css() }}>
+        <IconButton size="small" aria-label="close" onMouseUp={handleDelButtonClick} sx={{ position: "absolute", right: "-10px", top: "-10px", color: btnDelColor }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       )}

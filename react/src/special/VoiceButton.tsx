@@ -1,9 +1,9 @@
 /** @jsxImportSource @emotion/react */
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Box, FormControl, InputLabel, Input, FormHelperText, Button, Typography, Backdrop, CircularProgress, Avatar, Tabs, Tab, SelectChangeEvent, Link, Stack } from "@mui/material";
-import { SyntheticEvent, useCallback, useEffect, useState } from "react";
+import { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { URL_BASE, URL_RES, getUniBtnColor, getUniBgColor, isMember, getOrder, getName, range, channelParams, getChannelAndName } from "../const";
+import { URL_BASE, URL_RES, getUniBtnColor, getUniBgColor, isMember, getOrder, getName, range, channelParams, getChannelAndName, timecodeToSecond } from "../const";
 import { log } from "console";
 import { VoiceButtonOne, VoiceButtonOneProps } from "./VoiceButtonOne";
 
@@ -16,12 +16,14 @@ import { VoiceDeleteForm } from "./VoiceDeleteForm";
 import { createContext } from "react";
 import { SoundCtrl } from "./SoundCtrl";
 import { SearchCtrl } from "./SearchCtrl";
+import ReactPlayer from "react-player";
+import useMedia from "use-media";
+import useWindowSize from "../useWindowSize";
 
 export const DeleteModeFlagContext = createContext(false);
 export const DeleteKeyContext = createContext("");
-export const VolumeContext = createContext(100);
+export const VolumeContext = createContext(33);
 
-const SOUND_URL_BASE = URL_RES + "voice_button";
 const VOICE_LIST_URL = URL_BASE + "voice";
 const CHANNEL_INFO_URL = URL_BASE + "channel_info";
 
@@ -31,6 +33,11 @@ type kv = {
 };
 
 function VoiceButton() {
+  const isNotMobile = useMedia({ minWidth: "600px" });
+  const isNotMobileY = useMedia({ minHeight: "240px" });
+  const reactPlayerRef = useRef<ReactPlayer>(null);
+  const [winWidth, winHeight] = useWindowSize();
+
   const [isLoaded, setLoaded] = useState<boolean>(false);
   const [reLoadCt, setReLoadCt] = useState<number>(0);
   const [reDrawCt, setReDrawCt] = useState<number>(0);
@@ -46,18 +53,24 @@ function VoiceButton() {
   const [waveEditComp, setWaveEditComp] = useState<any>([]);
   const [tabValue, setTabValue] = useState<string>("1");
 
-  const [volume, setVolume] = useState<number>(100);
-  const [searchText, setSearchText] = useState<string>("");
+  const [volume, setVolume] = useState<number>(33);
+  const [searchText, setSearchText] = useState<any[]>([]);
 
   const [isDeleteMode, setDeleteMode] = useState<boolean>(false);
   const [deleteKey, setDeleteKey] = useState<string>("");
 
+  const [ytPalyerShotState, setYtPalyerShotState] = useState<boolean>(false);
+
+  // URLクエリパラメータの取得
+  const search = useLocation().search;
+  const queryParam = new URLSearchParams(search);
+  // 管理モードに入る
+  const isAdmin = queryParam.get("admin") == "123456";
+
+  const [selectVoice, setSelectVoice] = useState<any>();
+
   const handleChangeTabValue = (event: SyntheticEvent, newValue: any) => {
     setTabValue(newValue);
-  };
-
-  const onClickAllStop = () => {
-    console.log("ALL STOP VOICE");
   };
 
   useEffect(() => {
@@ -140,16 +153,7 @@ function VoiceButton() {
     });
 
     setVoiceButtonListMaster(vo_list_all.concat());
-
     setVoiceButtonList(vo_list_all.concat());
-    // EditWave 追加
-    // const w = vo_data[0];
-    // const vo = (
-    //   <Box component="span" key={3} sx={{ marginX: "1px" }}>
-    //     <EditWave channel={"maru"} title={""} filename={"03ari.mp3"} />
-    //   </Box>
-    // );
-    // setWaveEditComp(vo);
   }, [reDrawCt, deleteKey]);
 
   useEffect(() => {
@@ -172,7 +176,7 @@ function VoiceButton() {
     setSortSelect(new Set<string>([]));
   }, [voiceButtonListMaster]);
 
-  const updateFilterring = (sorted: Set<string>, searchText: string) => {
+  const updateFilterring = (sorted: Set<string>, searchText: any[]) => {
     // フィルタイング結果を反映
     const vl = voiceButtonListMaster!;
     if (vl != undefined && vl.length != 0) {
@@ -192,11 +196,10 @@ function VoiceButton() {
         const i = structuredClone(item[0]);
         // 検索文字列を含むか
         i.value = i.value.filter((vv: any) => {
-          if (searchText == "") {
+          if (searchText.length == 0) {
             return true;
           }
-
-          return vv.title.indexOf(searchText) != -1;
+          return searchText.map((item) => item.title).includes(vv.title);
         });
 
         dic.push(i);
@@ -234,10 +237,60 @@ function VoiceButton() {
     [resetBtnClickCB, setSortSelect, sortSelect, voiceButtonListMaster, searchText]
   );
 
+  console.log(winWidth, winHeight);
+
   return (
     <Box sx={{ background: "linear-gradient(135deg, #FFF6F3,#E7FDFF)" }}>
       <Backdrop sx={{ color: "#fff", zIndex: 1000 }} open={!isLoaded}>
         <CircularProgress sx={{ color: "#FFC84F" }} size="8rem" />
+      </Backdrop>
+      {/* Youtubeプレイヤー */}
+      <Backdrop
+        sx={{ color: "#fff", zIndex: 1 }}
+        open={selectVoice != undefined && ytPalyerShotState}
+        onClick={() => {
+          setYtPalyerShotState(false);
+          setSelectVoice(undefined);
+        }}
+      >
+        <Box>
+          <Stack direction="row" alignItems="flex-end" sx={{ marginBottom: 1 }}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={(e: any) => {
+                // タイムコードを秒に変換
+                const second = timecodeToSecond(selectVoice.start);
+                reactPlayerRef.current?.seekTo(second, "seconds");
+                // reactPlayerRef.current?.play
+                e.stopPropagation();
+              }}
+            >
+              {selectVoice?.start}～
+            </Button>
+            <Typography>{selectVoice?.title}</Typography>
+          </Stack>
+          <ReactPlayer
+            width={winWidth < 400 ? "360px" : "640px"}
+            // width={"360px"}
+            // height={isNotMobileY ? "360px" : "240px"}
+            height={winHeight < 380 ? "240px" : "360px"}
+            url={ytPalyerShotState ? selectVoice?.archiveUrl : ""}
+            ref={reactPlayerRef}
+            config={{
+              youtube: {
+                playerVars: { controls: 1 },
+              },
+            }}
+            playing={true}
+            onStart={() => {
+              // タイムコードを秒に変換
+              const second = timecodeToSecond(selectVoice.start);
+              reactPlayerRef.current?.seekTo(second, "seconds");
+              // reactPlayerRef.current?.play
+            }}
+          />
+        </Box>
       </Backdrop>
 
       {isLoaded && (
@@ -276,16 +329,15 @@ function VoiceButton() {
               <Link href="/">スケジューラーに戻る</Link>
             </Typography>
 
-            {/* ソートボタン */}
-            <Stack direction="row" justifyContent="start" className="flex-wrap">
+            {/* コントロール系 */}
+            <Stack direction="column" justifyContent="start" className="flex-wrap">
+              {/* ソートボタン */}
               <Box className="left-column">
                 <ChannelFillter channelInfo={channelInfo} fillterBtnClickCB={fillterBtnClickCB} sortSelect={sortSelect} resetBtnClickCB={resetBtnClickCB} />
               </Box>
 
-              <Stack direction="column" justifyContent="center" className="right-column">
-                <SoundCtrl setVolume={setVolume} allStop={onClickAllStop} />
-                <SearchCtrl setSearchWord={setSearchText} voiceButtonListMaster={voiceButtonListMaster} />
-              </Stack>
+              <SoundCtrl setVolume={setVolume} allStop={() => {}} />
+              <SearchCtrl setSearchWords={setSearchText} voiceButtonListMaster={voiceButtonListMaster} />
             </Stack>
 
             {/* ボタンエリア */}
@@ -316,7 +368,20 @@ function VoiceButton() {
                             <DeleteKeyContext.Provider value={deleteKey}>
                               <DeleteModeFlagContext.Provider value={isDeleteMode}>
                                 <Box component="span" sx={{ marginX: "2px" }}>
-                                  <VoiceButtonOne filename={item_one.filename} title={item_one.title} channel={item_one.channel} uid={item_one.uid} reLoadFunc={setReLoadCt} />
+                                  <VoiceButtonOne
+                                    filename={item_one.filename}
+                                    title={item_one.title}
+                                    channel={item_one.channel}
+                                    isDenoise={item_one.isDenoise}
+                                    uid={item_one.uid}
+                                    reLoadFunc={setReLoadCt}
+                                    isAdmin={isAdmin}
+                                    selectVoice={setSelectVoice}
+                                    archiveUrl={item_one.url}
+                                    start={item_one.start}
+                                    end={item_one.end}
+                                    setYtPalyerShotState={setYtPalyerShotState}
+                                  />
                                 </Box>
                               </DeleteModeFlagContext.Provider>
                             </DeleteKeyContext.Provider>
@@ -359,7 +424,7 @@ function VoiceButton() {
                 <Tab label="音声削除" value="2" />
               </TabList>
               <TabPanel value="1">
-                <VoiceAddForm reloadFunc={setReLoadCt} />
+                <VoiceAddForm reloadFunc={setReLoadCt} selectVoice={selectVoice} isAdmin={isAdmin} />
               </TabPanel>
               <TabPanel value="2">
                 <VoiceDeleteForm deleteMode={isDeleteMode} deleteModeChangeFunc={setDeleteMode} setDeleteKey={setDeleteKey} reDrawFunc={setReDrawCt} />

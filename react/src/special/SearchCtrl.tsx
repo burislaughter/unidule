@@ -3,13 +3,13 @@ import { useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 
 export type SearchCtrlProp = {
-  setSearchWord: any;
+  setSearchWords: any;
   voiceButtonListMaster: any;
 };
 
-export const SearchCtrl = ({ setSearchWord, voiceButtonListMaster }: SearchCtrlProp) => {
+export const SearchCtrl = ({ setSearchWords, voiceButtonListMaster }: SearchCtrlProp) => {
   const handleChange = (event: React.SyntheticEvent, value: any, reason: AutocompleteChangeReason) => {
-    // setSearchWord(searchText);
+    setSearchWords(value);
     console.log(value);
   };
 
@@ -26,14 +26,14 @@ export const SearchCtrl = ({ setSearchWord, voiceButtonListMaster }: SearchCtrlP
   }
 
   return (
-    <Box sx={{ height: "100%", marginX: "10px", filter: "drop-shadow(10px 10px 4px rgb(0 0 0 / 0.8))" }}>
+    <Box sx={{ height: "100%", marginX: "10px", marginBottom: "10px", filter: "drop-shadow(10px 10px 4px rgb(0 0 0 / 0.8))" }}>
       <Autocomplete
         fullWidth
         multiple
         id="tags-standard"
         options={allVoiceTitles}
         getOptionLabel={(option: any) => option.title}
-        renderInput={(params) => <TextField {...params} variant="standard" label="音声検索" placeholder="Favorites" />}
+        renderInput={(params) => <TextField {...params} variant="standard" label="音声検索（自由入力で絞り込めます）" placeholder="" />}
         onChange={handleChange}
       />
     </Box>

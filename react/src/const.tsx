@@ -1,3 +1,5 @@
+import { ToneAudioBuffer } from "tone";
+
 export type UniMen = Record<string, { uid: string; name: string; order: number; twitter: string; type: string; birthday: string; debut: string }>;
 
 // APIエンドポイント
@@ -95,6 +97,91 @@ export const getUniDarkColor = (channel: string): string => {
 };
 
 export const range = (start: number, end: number) => Array.from({ length: end - start + 1 }, (v, k) => k + start);
+
+/****************************************************************
+ * AudioBuffer を Blob に変換
+ ****************************************************************/
+export const makeWav = (src: AudioBuffer | ToneAudioBuffer) => {
+  const numOfChan = src.numberOfChannels;
+  const length = src.length * numOfChan * 2 + 44;
+  const buffer = new ArrayBuffer(length);
+
+  const setUint16 = (view: DataView, offset: number, data: number) => {
+    view.setUint16(offset, data, true);
+    return offset + 2;
+  };
+
+  const setUint32 = (view: DataView, offset: number, data: number) => {
+    view.setUint32(offset, data, true);
+    return offset + 4;
+  };
+
+  const writeString = (view: DataView, offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+    return offset + str.length;
+  };
+
+  // WAVEファイルのヘッダー作成
+  let pos = 0;
+  const view = new DataView(buffer);
+  pos = writeString(view, pos, "RIFF"); // "RIFF"
+  pos = setUint32(view, pos, length - 8); // file length - 8
+  pos = writeString(view, pos, "WAVE"); // "WAVE"
+
+  pos = writeString(view, pos, "fmt "); // "fmt " chunk
+  pos = setUint32(view, pos, 16); // length = 16
+  pos = setUint16(view, pos, 1); // PCM (uncompressed)
+  pos = setUint16(view, pos, numOfChan);
+  pos = setUint32(view, pos, src.sampleRate);
+  pos = setUint32(view, pos, src.sampleRate * 2 * numOfChan); // avg. bytes/sec
+  pos = setUint16(view, pos, numOfChan * 2); // block-align
+  pos = setUint16(view, pos, 16); // 16-bit
+
+  pos = writeString(view, pos, "data"); // "data" - chunk
+  pos = setUint32(view, pos, length - pos - 4); // chunk length
+
+  // write interleaved data
+  const channels = [];
+  for (let i = 0; i < src.numberOfChannels; i++) channels.push(src.getChannelData(i));
+
+  let offset = 0;
+  while (pos < length) {
+    for (let i = 0; i < numOfChan; i++) {
+      // 波形の再生位置ごとに左右のチャンネルのデータを設定していく
+      const sample = Math.max(-1, Math.min(1, (channels[i] ?? [])[offset] ?? 0)); // 波形データを-1~1の間に丸め込む(おそらく最大最小を求め、全区間をその数で割って正規化するのが良いかも)
+      const sample16bit = (0.5 + sample < 0 ? sample * 0x8000 : sample * 0x7fff) | 0; // 32bit不動小数点を16bit整数に丸め込む
+      view.setInt16(pos, sample16bit, true); // データ書き込み
+      pos += 2;
+    }
+    offset++;
+  }
+
+  return new Blob([buffer], { type: "audio/wav" });
+};
+
+export const timecodeToSecond = (time_str: string) => {
+  const time_split = time_str.split(":");
+  let hour = 0;
+  let minute = 0;
+  let second = 0;
+
+  if (time_split.length == 3) {
+    hour = Number(time_split[0]) * 60 * 60;
+    minute = Number(time_split[1]) * 60;
+    second = Number(time_split[2]);
+  } else if (time_split.length == 2) {
+    minute = Number(time_split[0]) * 60;
+    second = Number(time_split[1]);
+  } else if (time_split.length == 1) {
+    //  秒だけ指定
+    second = Number(time_split[0]);
+  }
+
+  return hour + minute + second;
+};
+
 // ボイスのカテゴリー
 export const voiceCaregory = [
   { value: "あいさつ", name: "あいさつ" },
