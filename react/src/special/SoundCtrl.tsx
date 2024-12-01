@@ -8,7 +8,7 @@ export type SoundCtrlProp = {
 };
 
 export const SoundCtrl = ({ setVolume, allStop }: SoundCtrlProp) => {
-  const [vol, setVol] = useState(33);
+  const [vol, setVol] = useState(60);
 
   const handleChange = (event: React.SyntheticEvent | Event, value: number | number[]) => {
     setVol(value as number);

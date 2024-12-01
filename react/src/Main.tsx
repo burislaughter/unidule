@@ -16,31 +16,15 @@ import ChannelFillter from "./ChannelFillter";
 import { Summary } from "./Summary";
 import { ReadMe } from "./ReadMe";
 import { useNavigate } from "react-router-dom";
+import { HeaderBox, TabPanelEx } from "./styled";
+import { getAuthToken, AuthToken } from "./AuthToken";
 
-const buildDate = "2024.11.16";
-
-const HeaderBox = styled(Box)({
-  paddingTop: 8,
-  paddingBottom: 8,
-  marginTop: 4,
-  marginBottom: 8,
-  width: "100%",
-  color: "#FFFFFF",
-  backgroundColor: "#1976d2",
-  borderRadius: 2,
-  fontSize: "0.875rem",
-  fontWeight: "700",
-  textAlign: "center",
-});
-
-const TabPanelEx = styled(TabPanel)({
-  padding: 0,
-});
+const buildDate = "2024.11.23";
 
 export const getChannelInfo = (cis: any[], item: any): any => {
   const cid = channelParams[item.channel];
 
-  if (cid.uid === "") {
+  if (cid === undefined || cid?.uid === "") {
     return {
       id: item.snippet.channelId,
       snippet: item.snippet.channelInfo?.snippet,
@@ -78,9 +62,9 @@ function Main() {
 
   const [isLoaded, setLoaded] = useState<boolean>(false);
   const [channelInfo, setChannelInfo] = useState<any>();
-  const [tabSelect, setTabSelect] = React.useState("1");
-  const [systemStatus, setSystemStatus] = React.useState("");
-  const [informations, setInformations] = React.useState<any[]>([]);
+  const [tabSelect, setTabSelect] = useState("1");
+  const [systemStatus, setSystemStatus] = useState("");
+  const [informations, setInformations] = useState<any[]>([]);
 
   // 予定表ツイート
   const [scheduleTweet, setScheduleTweetList] = useState<any[]>([]);
@@ -352,16 +336,16 @@ function Main() {
           お問い合わせ <Link href="https://x.com/distant_zz">@distant_zz</Link>
         </Typography>
 
+        {/* "online" */}
         {isLoaded && systemStatus == "online" && (
           <>
             <TabContext value={tabSelect}>
               <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
                 <TabList onChange={onChangeTab} aria-label="チャンネルフィルター">
                   <Tab label="LIVE" value="1" />
-                  <Tab label="SUMMARY" value="2" />
                   <Tab
                     label="VOICE BUTTON"
-                    value="3"
+                    value="2"
                     onClick={() => {
                       navigate("/sp/voice_button");
                     }}
@@ -370,6 +354,8 @@ function Main() {
                       textDecoration: "underline",
                     }}
                   />
+
+                  <Tab label="SUMMARY" value="3" />
                   <Tab label="READ ME" value="4" />
                 </TabList>
               </Box>
@@ -377,12 +363,12 @@ function Main() {
                 {/* ソートボタン */}
                 <ChannelFillter channelInfo={channelInfo} fillterBtnClickCB={fillterBtnClickCB} sortSelect={sortSelect} resetBtnClickCB={resetBtnClickCB} />
               </TabPanelEx>
-              <TabPanelEx value="2">
+              <TabPanelEx value="3">
                 {/* サマリー */}
                 <Summary channelInfo={channelInfo} />
               </TabPanelEx>
               <TabPanelEx value="4">
-                {/* サマリー */}
+                {/* Readme */}
                 <ReadMe />
               </TabPanelEx>
             </TabContext>

@@ -30,7 +30,8 @@ from requests.auth import HTTPBasicAuth
 from datetime import datetime, timezone, timedelta
 
 # 音声抽出用サーバーURL
-VOICE_SERVER = 'https://unidule.net:34449/uwsgi_yt_dlp'
+VOICE_SERVER = 'https://unidule.net:34449/'
+# VOICE_SERVER = 'https://60.39.85.91:34449/'
 
 
 
@@ -326,14 +327,15 @@ def createResponce(status,messsage):
 
 
 ################################################################################################
-# https://www.youtube.com/live/xxxxx のURLを 
+# https://www.youtube.com/live/xxxxx と
+# https://www.youtube.com/shorts/xxxx のURLを 
 # https://www.youtube.com/watch?v=xxxx のURLに変更する
 #################################################################################################
 def replaceLiveUrl(url):
     p = urlparse(url)
-    # print(p[2])
-    url = p[2].replace('/live/', 'https://www.youtube.com/watch?v=')
+    url = p[2].replace('/live/', 'https://www.youtube.com/watch?v=').replace('/shorts/', 'https://www.youtube.com/watch?v=')
     return url
+
 
 
 
@@ -364,6 +366,7 @@ async def CallRawVideoDownloader(video_id, start, channel, uid):
             'channel':channel,
             'uid':uid,
         },
+        # verify=False,
         auth=HTTPBasicAuth(
             os.environ['RAW_VIDEO_USER_ID'], 
             os.environ['RAW_VIDEO_PASSWORD']
@@ -641,8 +644,10 @@ def lambda_handler(event, context):
         print(item)
 
         # URLから動画IDを取得
-        # 共有からの/live/が含まれるものの場合  https://www.youtube.com/live/0Z-VKmkb0wM?si=lQr7c3XgLbDFacxt
-        if('/live/' in url):
+        # 共有からの/live/か/shorts/が含まれるものの場合
+        #   https://www.youtube.com/live/0Z-VKmkb0wM?si=lQr7c3XgLbDFacxt
+        #   https://www.youtube.com/shorts/DkAoIdue3HE
+        if('/live/' in url or '/shorts/' in url):
             url = replaceLiveUrl(url)
 
         item['url'] = url
@@ -734,7 +739,7 @@ def lambda_handler(event, context):
         # URLをデコード
         url = urllib.parse.unquote(event['queryStringParameters']['video_url'])
 
-        if('/live/' in url):
+        if('/live/' in url or '/shorts/' in url):
             url = replaceLiveUrl(url)
 
         o = parse_qsl(urlparse(url).query)
@@ -828,7 +833,7 @@ def lambda_handler(event, context):
         dic['filekey'] = fileKey
 
         try:
-            VOICE_SERVER = 'https://unidule.net:34449'
+            # VOICE_SERVER = 'https://unidule.net:34449'
             res = requests.get(
                 VOICE_SERVER,
                 auth=HTTPBasicAuth(

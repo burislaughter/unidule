@@ -22,9 +22,11 @@ export const getType = (channel: string): string => {
   return cid.type;
 };
 
-export const getBirthday = (channel: string, today: Date): Date => {
+export const getBirthday = (channel: string, today: Date): Date | undefined => {
   const cid = channelParams[channel];
   let mmdd = cid.birthday;
+  if (mmdd == "??/??") return undefined;
+
   return getThisYearNextDay(mmdd, today);
 };
 
@@ -73,7 +75,7 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
 
     const idx = getOrder(item.channel);
     const bd = getBirthday(item.channel, today);
-    const diffDayBD = differenceInDays(bd, today);
+    const diffDayBD = bd !== undefined ? differenceInDays(bd, today) : "???";
 
     const dd = getDebutDay(item.channel, today);
     const diffDayDD = differenceInDays(dd, today);
@@ -92,7 +94,7 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
           )}
           {diffDayBD != 0 && <Typography variant="h6">{diffDayBD}日</Typography>}
 
-          <Typography variant="caption">({format(bd, "M月d日")})</Typography>
+          <Typography variant="caption">({bd === undefined ? "??月??日" : format(bd, "M月d日")})</Typography>
         </TableCell>
 
         <TableCell align="right">

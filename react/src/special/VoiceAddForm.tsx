@@ -1,12 +1,11 @@
 import { Box, FormControl, InputLabel, FormHelperText, Button, Typography, TextField, Select, MenuItem, FormGroup, Stack, styled, SelectChangeEvent, IconButton, Alert, Link } from "@mui/material";
-import useSound from "use-sound";
-import { ChannelAndName, getChannelAndName, makeWav, URL_BASE, URL_HOST, URL_RAW, voiceCaregory } from "../const";
+import { ChannelAndName, getChannelAndName, makeWav, URL_BASE, URL_HOST, voiceCategory } from "../const";
 import "./VoiceAddForm.css";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import Snackbar from "@mui/material/Snackbar";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DisabledByDefaultIcon from "@mui/icons-material/DisabledByDefault";
-import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { LoadingButton } from "@mui/lab";
 import { Send as SendIcon, Close as CloseIcon, Margin } from "@mui/icons-material";
@@ -158,7 +157,7 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
       setValue("start", selectVoice?.start);
       setValue("end", selectVoice?.end);
     }
-  }, [selectVoice?.title]);
+  }, [isAdmin, selectVoice?.title]);
 
   ////////////////////////////////////////////////////////////////////
   // 送信
@@ -169,7 +168,7 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
 
     // 音声の範囲の取得
     const buffer = waveBuffer?.slice(activeRegion.start, activeRegion.end)?.get();
-    if (buffer != undefined) {
+    if (buffer !== undefined) {
       const sliceBuffer = makeWav(buffer);
       formData.append("waveBuffer", await fileToBase64(sliceBuffer));
     }
@@ -179,9 +178,9 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
     // }
 
     for (const key of Object.keys(data)) {
-      if (key == "file") {
+      if (key === "file") {
         const file = data[key][0] as unknown as File;
-        if (file != undefined) {
+        if (file !== undefined) {
           const base64bin = await fileToBase64(file);
           formData.append(key, base64bin);
         }
@@ -240,7 +239,7 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
 
   // カテゴリー選択
   const categoryComp: any[] = [];
-  voiceCaregory.forEach((categ) => {
+  voiceCategory.forEach((categ) => {
     categoryComp.push(
       <MenuItem key={categ.name} value={categ.value}>
         {categ.name}
@@ -280,7 +279,7 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
     console.log(startTC);
     console.log(endTC);
 
-    if (url == "" && startTC == "" && channel == "") return;
+    if (url === "" && startTC === "" && channel === "") return;
 
     // ボタンをローディングへ
     setSending(true);
@@ -308,14 +307,14 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
       })
       .catch((err) => {
         setErrorYoutubeDlpOpen(true);
-        setErrorMessage(err.message + "\n" + err.response.data != undefined ? err.response.data : err.response.data.message);
+        setErrorMessage(err.message + "\n" + err.response.data !== undefined ? err.response.data : err.response.data.message);
         setSending(false);
       });
   }, [url, channel, startTC, endTC, execMode]);
 
   // ポーリング実行関数
   const pollingFuncCB = useCallback(() => {
-    if (rawVoiceUID == "" || channel == "" || execMode != 1) return;
+    if (rawVoiceUID === "" || channel === "" || execMode !== 1) return;
 
     const axiosInstance = axios.create({
       withCredentials: false,
@@ -518,6 +517,9 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
           {rawVoiceFileName && <Box sx={{ margin: "1px" }}>{EditWaveConpEx}</Box>}
           <Stack direction={{ xs: "column", sm: "row" }}>
             <LoadingButton
+              // DNSの浸透までdisabled
+              // disabled={true}
+
               loading={sending}
               component="label"
               variant="contained"
@@ -549,12 +551,9 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
           </Stack>
 
           {rawVoiceGetProgress && <Typography sx={{ fontSize: "0.8rem", color: "#333" }}>{rawVoiceGetProgress}</Typography>}
-
           <Typography sx={{ fontSize: "0.8rem" }}>アーカイブから音声を直接取得します</Typography>
-          <Typography sx={{ fontSize: "0.8rem" }}>この機能は現在試験中です。</Typography>
-          <Typography sx={{ fontSize: "0.8rem" }}>切り取る範囲が決まったら「決定」ボタンを押してからリクエストするボタンを押してください</Typography>
+          <Typography sx={{ fontSize: "0.8rem" }}>「決定」ボタンは不要になりました。</Typography>
           <Typography sx={{ fontSize: "0.8rem" }}>音声の取得にはたまに5分くらいかかります</Typography>
-          <Typography sx={{ fontSize: "0.8rem" }}>アップロードできる最大の長さは25秒程度です</Typography>
         </Box>
 
         <FormGroup>

@@ -16,13 +16,21 @@ PATH_PARAMETER_RAW_VOICE_POOL = '/raw_voice_pool'
 # チャンネル情報の定数
 # チャンネルオーナー、チャンネルID、新着動画プレイリストID
 channelParams = [
+    # EINS
     ('maru','UCmB1E78Kdgd9z6hN3ONRKow','UUmB1E78Kdgd9z6hN3ONRKow','UUMOmB1E78Kdgd9z6hN3ONRKow'),
     ('nagisa','UCe5mbpYA9Yym4lZTdj06G6Q','UUe5mbpYA9Yym4lZTdj06G6Q','UUMOe5mbpYA9Yym4lZTdj06G6Q'),
     ('nanase','UCFfKS52xZaus6HunxP3Owsw','UUFfKS52xZaus6HunxP3Owsw','UUMOFfKS52xZaus6HunxP3Owsw'),
-
     ('ida','UC7Ft50QAmUGWE6-ZfrHOG5Q','UU7Ft50QAmUGWE6-ZfrHOG5Q','UUMO7Ft50QAmUGWE6-ZfrHOG5Q'),
     ('ran','UCVuVw2WDKIYCj9HABYVuREg','UUVuVw2WDKIYCj9HABYVuREg','UUMOVuVw2WDKIYCj9HABYVuREg'),
     ('roman','UCbdOhaCW0Ti1qVCb9PKvmxg','UUbdOhaCW0Ti1qVCb9PKvmxg','UUMObdOhaCW0Ti1qVCb9PKvmxg'),
+
+    # ZWEI
+    ('rabi','UCpPkVnKaAqg9_conr8qAZjA','UUpPkVnKaAqg9_conr8qAZjA','UUMOpPkVnKaAqg9_conr8qAZjA'),
+    ('souta','UCAS1tKQTTPVw4-TFnKTzvnw','UUAS1tKQTTPVw4-TFnKTzvnw','UUMOAS1tKQTTPVw4-TFnKTzvnw'),
+    ('jyui','UC3Wxd3RwdF-3gwt-Bud0oEQ','UU3Wxd3RwdF-3gwt-Bud0oEQ','UUMO3Wxd3RwdF-3gwt-Bud0oEQ'),
+    ('asuto','UC_lfOFwTCIvZsuaSvJQpNXg','UU_lfOFwTCIvZsuaSvJQpNXg','UUMO_lfOFwTCIvZsuaSvJQpNXg'),
+    ('hoguno','UCJWTT5HZQbrkP1NUBwwVEbQ','UUJWTT5HZQbrkP1NUBwwVEbQ','UUMOJWTT5HZQbrkP1NUBwwVEbQ'),
+    ('konn','UCaSJgx9BZRktT0s19henMGg','UUaSJgx9BZRktT0s19henMGg','UUMOaSJgx9BZRktT0s19henMGg'),
 
     ('uniraid','UCKofJjNEmQ3LwERp3pRVxtw','UUKofJjNEmQ3LwERp3pRVxtw','UUMOKofJjNEmQ3LwERp3pRVxtw'),
     ('uniraid_cut','UCohnUVLcGInaC0l-2A95I5A','UUohnUVLcGInaC0l-2A95I5A','UUMOohnUVLcGInaC0l-2A95I5A'),
