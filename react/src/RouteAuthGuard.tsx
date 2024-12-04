@@ -27,7 +27,7 @@ export const RouteAuthGuard: VFC<Props> = ({ component }) => {
 
   // 認証されていなかったらリダイレクトさせる前にアクセスされたパスを残しておく
   if (!auth.isAuthenticated) {
-    localStorage.setItem(PATH_LOCAL_STORAGE_KEY, location.pathname);
+    // localStorage.setItem(PATH_LOCAL_STORAGE_KEY, location.pathname);
     auth.signinRedirect();
   }
 

@@ -132,7 +132,7 @@ function Main() {
           } else if (endDt.getTime() < dt.getTime()) {
             // 未来
             isFuture = true;
-          } else if (obj.liveBroadcastContent == "none" && obj.liveStreamingDetails != undefined) {
+          } else if (obj.liveBroadcastContent == "none" && obj?.liveStreamingDetails?.actualEndTime != undefined) {
             // 本日の終了分
             dt_str = format(new Date(new Date(obj.liveStreamingDetails.actualEndTime)), "yyyy/MM/dd HH:mm");
             isTodayFinished = true;
@@ -321,7 +321,7 @@ function Main() {
   };
 
   return (
-    <Box sx={{ background: "linear-gradient(135deg, #FFF6F3,#E7FDFF)" }}>
+    <Box sx={{ background: "linear-gradient(135deg, #FFF6F3,#E7FDFF)", paddingTop: "64px" }}>
       <Backdrop sx={{ color: "#fff", zIndex: 1000 }} open={!isLoaded}>
         <CircularProgress sx={{ color: "#FFC84F" }} size="8rem" />
       </Backdrop>

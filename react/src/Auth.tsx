@@ -1,15 +1,9 @@
 import { Box, Button, Typography } from "@mui/material";
 import { useAuth } from "react-oidc-context";
+import { signOutRedirect } from "./cognitoAuthConfig";
 
 function Auth() {
   const auth = useAuth();
-
-  const signOutRedirect = () => {
-    const clientId = "";
-    const logoutUri = "http://localhost:3000";
-    const cognitoDomain = "https://ap-northeast-11cjljsu5a.auth.ap-northeast-1.amazoncognito.com";
-    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
-  };
 
   if (auth.isLoading) {
     return <Box>Loading...</Box>;
@@ -19,16 +13,34 @@ function Auth() {
     return <Box>Encountering error... {auth.error.message}</Box>;
   }
 
+  const role = (auth.user?.profile as unknown as any)["custom:role"];
+
   if (auth.isAuthenticated) {
     return (
-      <Box>
+      <Box sx={{ marginTop: "72px" }}>
+        <Typography> role: {role} </Typography>
         <Typography> email: {auth.user?.profile.email} </Typography>
         <Typography> Nickname: {auth.user?.profile.nickname} </Typography>
         <Typography> ID Token: {auth.user?.id_token} </Typography>
         <Typography> Access Token: {auth.user?.access_token} </Typography>
         <Typography> Refresh Token: {auth.user?.refresh_token} </Typography>
 
-        <Button onClick={() => auth.removeUser()}>Sign out</Button>
+        <Button
+          onClick={() => {
+            auth.removeUser();
+          }}
+        >
+          removeUser
+        </Button>
+
+        <Button
+          onClick={() => {
+            auth.removeUser();
+            signOutRedirect();
+          }}
+        >
+          Sign out
+        </Button>
       </Box>
     );
   }
@@ -42,7 +54,13 @@ function Auth() {
       >
         Sign in
       </Button>
-      <Button onClick={() => signOutRedirect()}>Sign out</Button>
+      <Button
+        onClick={() => {
+          signOutRedirect();
+        }}
+      >
+        Sign out
+      </Button>
     </Box>
   );
 }

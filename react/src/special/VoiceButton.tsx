@@ -40,6 +40,8 @@ import useWindowSize from "../useWindowSize";
 import { HeaderBox, HeaderBoxGroups, TabPanelEx } from "../styled";
 import { animateScroll as scroll } from "react-scroll";
 import { Circle, CloudCircleRounded } from "@mui/icons-material";
+import BreadcrumbsEx from "../breadcrumbs";
+import { useAuth } from "react-oidc-context";
 export const DeleteModeFlagContext = createContext(false);
 export const DeleteKeyContext = createContext("");
 export const VolumeContext = createContext(60);
@@ -383,7 +385,7 @@ function VoiceButton() {
   /******************************************************************************************************************/
   /******************************************************************************************************************/
   return (
-    <Box sx={{ background: "linear-gradient(135deg, #FFF6F3,#E7FDFF)", position: "relative" }}>
+    <Box sx={{ background: "linear-gradient(135deg, #FFF6F3,#E7FDFF)", position: "relative", paddingTop: "64px" }}>
       <Backdrop sx={{ color: "#fff", zIndex: 1000 }} open={!isLoaded}>
         <CircularProgress sx={{ color: "#FFC84F" }} size="8rem" />
       </Backdrop>
@@ -462,9 +464,13 @@ function VoiceButton() {
           >
             ゆにれいど！音声ボタン
           </Typography>
-          <Typography sx={{ textAlign: "right", fontSize: "0.75rem", marginBottom: "4px" }}>
-            <Link href="/">スケジューラーに戻る</Link>
-          </Typography>
+
+          <BreadcrumbsEx
+            props={[
+              { url: "/", label: "スケジューラー" },
+              { url: "", label: "音声ボタン" },
+            ]}
+          ></BreadcrumbsEx>
 
           {/* コントロール系 */}
           <Stack direction="column" justifyContent="start" className="flex-wrap">

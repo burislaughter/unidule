@@ -7,18 +7,18 @@ import { PATH_LOCAL_STORAGE_KEY } from "./RouteAuthGuard";
 /**
  * 認証後のCallbackエンドポイント
  */
-export const AuthCallback: VFC = () => {
+export const LogoutCallback: VFC = () => {
   const auth = useAuth();
 
   if (auth.isLoading) {
     return <CircularProgress />; // ローディングコンポーネント
   }
 
-  // ログイン前にアクセスしようとしていたパスがあれば取得してリダイレクト
-  const redirectLocation = localStorage.getItem(PATH_LOCAL_STORAGE_KEY);
-  localStorage.removeItem(PATH_LOCAL_STORAGE_KEY);
+  // // ログイン前にアクセスしようとしていたパスがあれば取得してリダイレクト
+  // const redirectLocation = localStorage.getItem(PATH_LOCAL_STORAGE_KEY);
+  // localStorage.removeItem(PATH_LOCAL_STORAGE_KEY);
 
   return <Navigate to={"/"} replace />;
 };
 
-export default AuthCallback;
+export default LogoutCallback;

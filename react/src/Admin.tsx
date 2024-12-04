@@ -1,12 +1,9 @@
 /** @jsxImportSource @emotion/react */
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Main from "./Main";
-import { Box, Link, FormControl, InputLabel, Input, FormHelperText, Button, Typography, TextField, Select, MenuItem } from "@mui/material";
+import { Box, Link, InputLabel, Input, Button, Typography, TextField, Select, MenuItem } from "@mui/material";
 import { useCallback, useState } from "react";
 import axios from "axios";
 import { URL_BASE, channelParams } from "./const";
-import { configureAuth } from "react-query-auth";
-import { log } from "console";
+import BreadcrumbsEx from "./breadcrumbs";
 
 const VIDEO_ONE_URL = URL_BASE + "video";
 const AUTH_URL = URL_BASE + "auth";
@@ -192,7 +189,14 @@ function Admin() {
   };
 
   return (
-    <Box sx={{ margin: 2 }}>
+    <Box sx={{ margin: 2, paddingTop: "72px" }}>
+      <BreadcrumbsEx
+        props={[
+          { url: "/", label: "スケジューラー" },
+          { url: "", label: "管理ページ" },
+        ]}
+      ></BreadcrumbsEx>
+
       {apiKey == "" && (
         <Box>
           <Box>

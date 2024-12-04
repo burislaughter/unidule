@@ -279,7 +279,7 @@ export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoa
         sx={{
           textTransform: "none",
           backgroundColor: btnColor,
-          color: "#FFFFFF",
+          color: channel === "jyui" ? "rgb(221, 37, 114)" : "#FFFFFF",
           fontSize: "1rem",
           "&:hover": { backgroundColor: btnColor, mixBlendMode: "hard-light" },
         }}
