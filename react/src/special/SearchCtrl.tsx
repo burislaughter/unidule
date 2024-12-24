@@ -5,10 +5,11 @@ import { getUniBgColor, getUniBtnColor } from "../const";
 
 export type SearchCtrlProp = {
   setSearchWords: any;
+  searchWords: any;
   voiceButtonListMaster: any;
 };
 
-export const SearchCtrl = ({ setSearchWords, voiceButtonListMaster }: SearchCtrlProp) => {
+export const SearchCtrl = ({ setSearchWords, searchWords, voiceButtonListMaster }: SearchCtrlProp) => {
   const [inputValue, setInputValue] = useState("");
 
   const handleChange = (event: React.SyntheticEvent, value: any, reason: AutocompleteChangeReason) => {
@@ -33,6 +34,7 @@ export const SearchCtrl = ({ setSearchWords, voiceButtonListMaster }: SearchCtrl
       <Autocomplete
         fullWidth
         multiple
+        value={searchWords}
         inputValue={inputValue}
         blurOnSelect={false}
         disableCloseOnSelect={true}

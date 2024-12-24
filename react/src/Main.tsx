@@ -11,15 +11,13 @@ import { Tweet } from "react-twitter-widgets";
 import Tab from "@mui/material/Tab";
 import TabContext from "@mui/lab/TabContext";
 import TabList from "@mui/lab/TabList";
-import TabPanel from "@mui/lab/TabPanel";
 import ChannelFillter from "./ChannelFillter";
 import { Summary } from "./Summary";
 import { ReadMe } from "./ReadMe";
 import { useNavigate } from "react-router-dom";
 import { HeaderBox, TabPanelEx } from "./styled";
-import { getAuthToken, AuthToken } from "./AuthToken";
 
-const buildDate = "2024.11.23";
+const buildDate = "2024.12.07";
 
 export const getChannelInfo = (cis: any[], item: any): any => {
   const cid = channelParams[item.channel];

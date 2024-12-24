@@ -18,7 +18,7 @@ import json
 
 import urllib
 from lambda_function_update_dynamo import importVideoListDocument
-from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE, PATH_PARAMETER_RAW_VOICE, PATH_PARAMETER_RAW_VOICE_POOL
+from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE, PATH_PARAMETER_RAW_VOICE, PATH_PARAMETER_RAW_VOICE_POOL, PATH_PARAMETER_WAV_TO_MP3, PATH_PARAMETER_GET_CHAT, PATH_PARAMETER_SEARCH_CHAT
 from util import decimal_default_proc
 from util import splite_time
 
@@ -28,10 +28,13 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 from datetime import datetime, timezone, timedelta
+import pandas as pd
+import pytchat
+
 
 # 音声抽出用サーバーURL
-VOICE_SERVER = 'https://unidule.net:34449/'
-# VOICE_SERVER = 'https://60.39.85.91:34449/'
+# VOICE_SERVER = 'https://unidule.net:34449/'
+VOICE_SERVER = 'https://60.39.85.91:34449/'
 
 
 
@@ -111,6 +114,7 @@ def getVideoOne(table, video_id):
         print(e)
 
     print('getVideoOne finish')    
+
 
 
 
@@ -289,7 +293,7 @@ def putVoiceOne(item):
 
 
 ################################################################################################
-# DynamoDBから動画リストの取得
+# DynamoDBから音声情報を取得
 # table ... 対象テーブル
 # uid ... VoiceID
 #################################################################################################
@@ -309,6 +313,29 @@ def getVoiceOne(voice_uid):
         print(e)
 
     print('getVoiceOne finish')    
+
+
+
+################################################################################################
+# DynamoDBからvideo_idがコメント取得を処理済かチェック
+# viceo_id
+#################################################################################################
+def getChatVideoID(viceo_id):
+    print('getChatVideoID start')
+
+    table = dynamodb.Table(os.environ['DYNAMO_DB_CHAT_VIDEO_IDS_TABLE'])
+    try:
+        response = table.query(
+            # IndexName="uid-index",
+            KeyConditionExpression=Key('id').eq(viceo_id)
+        )
+        return response['Items']
+
+    except Exception as e:
+        print('dynamodb get エラー')
+        print(e)
+
+    print('getChatVideoID finish')    
 
 
 ################################################################################################
@@ -366,13 +393,183 @@ async def CallRawVideoDownloader(video_id, start, channel, uid):
             'channel':channel,
             'uid':uid,
         },
-        # verify=False,
+        verify=False,
         auth=HTTPBasicAuth(
             os.environ['RAW_VIDEO_USER_ID'], 
             os.environ['RAW_VIDEO_PASSWORD']
         )
     )
 
+
+
+################################################################################################
+# チャットテーブル検索
+# table ... 対象テーブル
+# channel_owner ... チャンネル所有者名
+#################################################################################################
+def getChatList(channel_id):
+    print('getChatList start')
+
+    table = dynamodb.Table(os.environ['DYNAMO_DB_CHAT_TABLE'])
+    try:
+        response = table.query(
+            IndexName = 'channel_id-datetime-index',
+            # KeyConditionExpression=Key('channel_id').eq(channel_id) & Key('endAt').gte(baseAt),
+            KeyConditionExpression=Key('channel_id').eq(channel_id),
+            ScanIndexForward=False
+        )
+        data = response['Items']
+
+        # レスポンスに LastEvaluatedKey が含まれなくなるまでループ処理を実行する
+        while 'LastEvaluatedKey' in response:
+            print(response['LastEvaluatedKey']['uuid'])
+            response = table.query(
+                IndexName = 'channel_id-datetime-index',
+                KeyConditionExpression=Key('channel_id').eq(channel_id),
+                ScanIndexForward=False,
+                ExclusiveStartKey=response['LastEvaluatedKey']
+            )
+
+            if 'LastEvaluatedKey' in response:
+                print("LastEvaluatedKey: {}".format(response['LastEvaluatedKey']))
+            data.extend(response['Items'])
+
+        result = sorted(data, key=lambda u: u["datetime"], reverse=True)
+        print('getChatList all finish')
+
+
+        return result
+
+    except Exception as e:
+        print('getChatList エラー')
+        print(e)
+
+################################################################################################
+# チャットテーブル検索
+# video_ids ... 動画id配列
+#################################################################################################
+def getViceoInfos(video_ids):
+    print('getViceoInfos start')
+
+    def split_list(l, n):
+        """
+        リストをサブリストに分割する
+        :param l: リスト
+        :param n: サブリストの要素数
+        :return: 
+        """
+        for idx in range(0, len(l), n):
+            yield l[idx:idx + n]
+
+    # with table.batch_get_item() as batch:
+    maps = []
+    for x in video_ids:
+        maps.append({'id':x})
+
+    # 100件ずつ分割
+    splits = split_list(maps,100)
+    data = []
+    table_name = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+    try:
+        for spl in splits:
+            response = dynamodb.batch_get_item(
+                RequestItems={
+                    table_name: {
+                        'Keys':spl
+                        }
+                }
+            )
+            data.extend(response['Responses']['channel_video_list'])
+
+        result = sorted(data, key=lambda u: u["startAt"], reverse=True)
+        print('getViceoInfos all finish')
+
+
+        return result
+
+    except Exception as e:
+        print('getViceoInfos エラー')
+        print(e)
+
+
+################################################################################################
+# チャットテーブル検索
+# video_ids ... 動画id
+#################################################################################################
+def UpdateChat(video_id, is_force = False):
+    print('GET_CHAT start :: '+video_id)
+
+    if len(getChatVideoID(video_id)) != 0 and is_force == False:
+        return createResponce(202, video_id)
+    
+    # dynamoDBからvideoID指定で配信/動画除法の取得
+    video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+    v_list = getVideoOne(video_list_table, video_id)
+
+    if len(v_list) == 0:
+        print('GET_CHAT not found video' + video_id)
+        return createResponce(404, video_id)
+
+    item = v_list[0]
+    if(item['liveBroadcastContent'] != 'none'):
+        print('GET_CHAT liveBroadcastContent is not none = ' + item['liveBroadcastContent'] + ':' + video_id)
+        return createResponce(400, "Status not none = " + item['liveBroadcastContent'] + ':' + video_id)
+
+    title = item['snippet']['title']
+    # PytchatCoreオブジェクトの取得
+    try:
+        livechat = pytchat.create(video_id = video_id, force_replay=True)
+
+        # Youtubeからチャット情報の取得 + dynamoDBにPush
+        print('waiting',end='')
+        result_chat = []
+        is_first = True
+        while livechat.is_alive():
+            # チャットデータの取得
+            chatdata = livechat.get()
+
+            if len(chatdata.items) == 0 and is_first:
+                print('chatdata notfound : ' + video_id )
+                return
+            
+            for c in chatdata.items:
+                # c.json()
+                result_chat.append({
+                    "video_id": video_id,
+                    "video_title": title,
+                    "id": c.id,
+                    "datetime": c.datetime,
+                    "channel_id": c.author.channelId,
+                    "author_name": c.author.name,
+                    "message": c.message,
+                    "amountString": c.amountString,
+                })
+            is_first = False
+            print('.',end='')
+            time.sleep(2)
+        print('get ok',end='')
+
+    except Exception as e:
+        print('pytchat エラー')
+        print(e)
+        return
+
+   
+
+    # dynamoDBで検索する用の情報を付随する
+    table = dynamodb.Table(os.environ['DYNAMO_DB_CHAT_TABLE'])
+    try:
+        with table.batch_writer() as batch:
+            for item in result_chat:
+                # 配信予定のない枠だけを取得した場合
+                batch.put_item(Item=item)
+        
+    except Exception as e:
+        print('dynamodb import エラー :: '+video_id)
+        print(e)
+
+    # 処理の終わったテーブルを保存
+    updateDynamoDBOne(os.environ['DYNAMO_DB_CHAT_VIDEO_IDS_TABLE'],{'id':video_id,'title':title })
 
 
 
@@ -382,6 +579,9 @@ async def CallRawVideoDownloader(video_id, start, channel, uid):
 def lambda_handler(event, context):
     pathParam = event['path']
     httpMethod = event['httpMethod']
+
+    print('=== query =============================================================')
+    print(event)
 
     # チャンネルの動画リストを更新
     # Youtube -> DynamoDB
@@ -473,7 +673,7 @@ def lambda_handler(event, context):
         youtube = build("youtube", "v3", developerKey = os.environ['YOUTUBE_API_KEY'])
         video = youtubeAPI.get_video_items([video_id],youtube)
 
-        importVideoListDocument(video, video_list_table, channel_owner)
+        importVideoListDocument(video, video_list_table, channel_owner, True)
 
         print('video force update ok',event)
 
@@ -625,6 +825,7 @@ def lambda_handler(event, context):
         item['channel'] = form.getvalue('channel')
         item['comment'] = form.getvalue('comment')
         item['delete_key'] = form.getvalue('delete_key')
+        item['user_id'] = form.getvalue('user_id')
         item['uid'] = str(uuid.uuid4())
 
 
@@ -733,8 +934,6 @@ def lambda_handler(event, context):
         return createResponce(404,"削除対象が見つかりませんでした")
 
 
-        
-    
     elif pathParam == PATH_PARAMETER_RAW_VOICE and httpMethod == "GET":  # Youtubeから音声データを直接取得
         # URLをデコード
         url = urllib.parse.unquote(event['queryStringParameters']['video_url'])
@@ -836,6 +1035,7 @@ def lambda_handler(event, context):
             # VOICE_SERVER = 'https://unidule.net:34449'
             res = requests.get(
                 VOICE_SERVER,
+                verify=False,
                 auth=HTTPBasicAuth(
                     os.environ['RAW_VIDEO_USER_ID'], 
                     os.environ['RAW_VIDEO_PASSWORD']
@@ -863,6 +1063,81 @@ def lambda_handler(event, context):
             'body': json.dumps(dic, default=decimal_default_proc, ensure_ascii=False),
             'isBase64Encoded': False
 
+        }
+
+
+    elif pathParam == PATH_PARAMETER_WAV_TO_MP3 and httpMethod == "GET":  # Wav登録の音声をmp3登録にする
+        print('WAV_TO_MP3 start')
+
+        uid = urllib.parse.unquote(event['queryStringParameters']['uid'])
+
+        # dynamoDBから音声の情報を取得
+        vo = getVoiceOne(uid)
+        if len(vo) == 0:
+          return createResponce(404, uid)
+        
+        # 最初
+        vo = vo[0]
+        channel = vo['channel']
+        filename = vo['filename'].replace(".wav",".mp3")
+
+        # 音声のUIDからMP3の存在をチェック
+        s3_client = boto3.client('s3')
+        fileKey = s3API.finds3Key(s3_client, 'res/' + channel + '/' + filename )
+
+        # MP3ファイルがない
+        if fileKey == None:
+          return createResponce(404, uid)
+
+        # dynamoDBの内容を更新
+        vo['filename'] = filename
+        vo['isDenoise'] = True
+
+        updateDynamoDBOne(os.environ['DYNAMO_DB_VOICE_LIST_TABLE'],vo)
+
+        return {
+            'headers': {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT"
+            },
+            'statusCode': 200,
+            'body': "UPDATE OK",
+            'isBase64Encoded': False
+
+        }
+    elif pathParam == PATH_PARAMETER_SEARCH_CHAT and httpMethod == "GET":  # チャット検索
+        channel_id = urllib.parse.unquote(event['queryStringParameters']['id'])
+        # dynamoDBで検索する用の情報を付随する
+        items = getChatList(channel_id)
+
+        # 配信情報を付随
+        df = pd.DataFrame(items)
+        # 動画IDで
+        ids = df['video_id'].unique()
+        video = getViceoInfos(ids)
+        body = {
+            'items':items,
+            'video':video
+        }
+
+        return createResponce(200,json.dumps(body, default=decimal_default_proc, ensure_ascii=False))
+
+
+    
+    elif pathParam == PATH_PARAMETER_GET_CHAT and httpMethod == "GET":  # 配信のチャットをYoutubeから取得する
+        UpdateChat(urllib.parse.unquote(event['queryStringParameters']['id']))
+        return {
+            'headers': {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT"
+            },
+            'statusCode': 200,
+            'body': 'OK',
+            'isBase64Encoded': False
         }
 
 

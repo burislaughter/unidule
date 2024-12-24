@@ -49,6 +49,22 @@ def getRawVideoFileKey(s3, find_key):
 
 
 ####################################################
+# s3を検索してフルパスを返す
+####################################################
+def finds3Key(s3, find_key):
+    info = s3.list_objects(
+            Bucket=BUCKET_NAME_RES,
+            Prefix= find_key)
+
+    # あれば Contents のキーがある
+    if 'Contents' not in info:
+        return None
+
+    return info['Contents'][0]['Key']
+
+
+
+####################################################
 ####################################################
 def putFile(s3, bucket,key, body, minetype):
     bucket = s3.Bucket(bucket)

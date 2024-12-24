@@ -18,6 +18,9 @@ import {
   Stack,
   styled,
   IconButton,
+  Switch,
+  FormGroup,
+  FormControlLabel,
 } from "@mui/material";
 import { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
@@ -41,7 +44,12 @@ import { HeaderBox, HeaderBoxGroups, TabPanelEx } from "../styled";
 import { animateScroll as scroll } from "react-scroll";
 import { Circle, CloudCircleRounded } from "@mui/icons-material";
 import BreadcrumbsEx from "../breadcrumbs";
-import { useAuth } from "react-oidc-context";
+import { useAuthenticator } from "@aws-amplify/ui-react";
+import { ViewMember } from "./ViewMember";
+import { ViewCategory } from "./ViewCategory";
+import { ViewTimeline } from "./ViewTimeline";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 export const DeleteModeFlagContext = createContext(false);
 export const DeleteKeyContext = createContext("");
 export const VolumeContext = createContext(60);
@@ -55,6 +63,7 @@ type kv = {
 };
 
 function VoiceButton() {
+  const { user, authStatus, route } = useAuthenticator((context) => [context.user, context.authStatus]);
   // メンバーの人数
   const MEMBER_NUM = 12;
 
@@ -98,6 +107,12 @@ function VoiceButton() {
   const [voiceButtonGroupListMaster, setVoiceButtonGroupListMaster] = useState<kv[]>([]);
   const handleChangeTabValue = (event: SyntheticEvent, newValue: any) => {
     setTabValue(newValue);
+  };
+
+  // 自分のボタンのみ表示するトグルスイッチ
+  const [myVoiceButtonDisp, setMyVoiceButtonDisp] = useState<boolean>(false);
+  const myVoiceButtonDispHandler = (event: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
+    setMyVoiceButtonDisp(checked);
   };
 
   /****************************************************************************************
@@ -195,19 +210,19 @@ function VoiceButton() {
     console.log("onChange searchText," + searchText);
     // フィルタイング結果を反映
 
-    // メンバー
+    // メンバー表示時用
     const dic = updateFiltering(sortSelect, searchText);
     if (dic != undefined) setVoiceButtonList(dic);
 
-    // カテゴリー
+    // カテゴリー表示時用
     const dicM = updateCategoryFiltering(sortSelect, searchText);
     if (dicM != undefined) setVoiceButtonGroupList(dicM);
-  }, [sortSelect, searchText]);
+  }, [sortSelect, searchText, myVoiceButtonDisp]);
 
   /****************************************************************************************
    * フィルターリセット
    ****************************************************************************************/
-  const resetBtnClickCB = React.useCallback(() => {
+  const resetBtnClickCB = useCallback(() => {
     // setSortSelect(new Set<string>([]));
     setSortSelect((_s) => {
       _s.clear();
@@ -225,6 +240,11 @@ function VoiceButton() {
       dicM.push(x);
     });
     setVoiceButtonGroupList(dicM);
+
+    // フリーワード
+    setSearchText([]);
+    // マイボタン
+    setMyVoiceButtonDisp(false);
   }, [voiceButtonListMaster, voiceButtonGroupListMaster]);
 
   /****************************************************************************************
@@ -249,13 +269,18 @@ function VoiceButton() {
 
         const i = structuredClone(item[0]);
         // 検索文字列を含むか
-        i.value = i.value.filter((vv: any) => {
-          if (searchText.length == 0) {
-            return true;
-          }
-          return searchText.map((item) => item.title).includes(vv.title);
-        });
+        i.value = i.value
+          .filter((vv: any) => {
+            if (searchText.length == 0) {
+              return true;
+            }
+            return searchText.map((item) => item.title).includes(vv.title);
+          })
+          .filter((vv: any) => {
+            if (myVoiceButtonDisp == false) return true;
 
+            return myVoiceButtonDisp && vv.user_id == user?.userId;
+          });
         dic.push(i);
       });
       return dic;
@@ -278,7 +303,7 @@ function VoiceButton() {
       for (const categ in vl) {
         // categ あいさつ
         const fillterdValue: { [carName: string]: any } = [];
-        // カテゴリーのなかから、フィルタ大将のメンバーを抽出
+        // カテゴリーのなかから、フィルタ対象のメンバーを抽出
         for (const c in vl[categ].value) {
           // 誰の
           sorted.forEach((x) => {
@@ -287,12 +312,18 @@ function VoiceButton() {
               const categ_channel_value: VoiceButtonOneProps[] = vl[categ].value[c];
 
               // searchText
-              const ccv_filterd = categ_channel_value.filter((ccv) => {
-                if (searchText.length == 0) {
-                  return true;
-                }
-                return searchText.map((item) => item.title).includes(ccv.title);
-              });
+              const ccv_filterd = categ_channel_value
+                .filter((ccv) => {
+                  if (searchText.length == 0) {
+                    return true;
+                  }
+                  return searchText.map((item) => item.title).includes(ccv.title);
+                })
+                .filter((vv: any) => {
+                  if (myVoiceButtonDisp == false) return true;
+
+                  return myVoiceButtonDisp && vv.user_id == user?.userId;
+                });
 
               if (ccv_filterd.length) fillterdValue[c] = ccv_filterd;
             }
@@ -332,7 +363,7 @@ function VoiceButton() {
         if (dic != undefined) setVoiceButtonList(dic);
       }
     },
-    [resetBtnClickCB, setSortSelect, sortSelect, voiceButtonListMaster, searchText]
+    [resetBtnClickCB, setSortSelect, sortSelect, voiceButtonListMaster, searchText, myVoiceButtonDisp]
   );
 
   /****************************************************************************************
@@ -341,7 +372,7 @@ function VoiceButton() {
   const onChangeTab = (event: React.SyntheticEvent, newValue: string) => {
     setTabSelect(newValue);
 
-    if (newValue == "1") {
+    if (newValue == "1" || newValue == "3") {
       // メンバー別ソート
     } else if (newValue == "2") {
       // カテゴリー別ソート
@@ -385,321 +416,200 @@ function VoiceButton() {
   /******************************************************************************************************************/
   /******************************************************************************************************************/
   return (
-    <Box sx={{ background: "linear-gradient(135deg, #FFF6F3,#E7FDFF)", position: "relative", paddingTop: "64px" }}>
-      <Backdrop sx={{ color: "#fff", zIndex: 1000 }} open={!isLoaded}>
-        <CircularProgress sx={{ color: "#FFC84F" }} size="8rem" />
-      </Backdrop>
-      {/* Youtubeプレイヤー */}
-      <Backdrop
-        sx={{ color: "#fff", zIndex: 1 }}
-        open={selectVoice != undefined && ytPalyerShotState}
-        onClick={() => {
-          setYtPalyerShotState(false);
-          setSelectVoice(undefined);
-        }}
-      >
-        <Box>
-          <Stack direction="row" alignItems="flex-end" sx={{ marginBottom: 1 }}>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={(e: any) => {
-                // タイムコードを秒に変換
-                reactPlayerRef.current?.seekTo(timecodeToSecond(selectVoice.start), "seconds");
-                e.stopPropagation();
-              }}
-            >
-              {selectVoice?.start}～
-            </Button>
-            <Typography>{selectVoice?.title}</Typography>
-          </Stack>
-          <ReactPlayer
-            width={winWidth < 400 ? "360px" : "640px"}
-            height={winHeight < 380 ? "240px" : "360px"}
-            url={ytPalyerShotState ? selectVoice?.archiveUrl : ""}
-            ref={reactPlayerRef}
-            config={{
-              youtube: {
-                playerVars: { controls: 1 },
-              },
-            }}
-            playing={true}
-            onStart={() => {
-              // タイムコードを秒に変換
-              reactPlayerRef.current?.seekTo(timecodeToSecond(selectVoice.start), "seconds");
-            }}
-          />
-        </Box>
-      </Backdrop>
-
-      {isLoaded && (
-        <Box
-          sx={{
-            position: "relative",
-            paddingTop: 4,
-            paddingLeft: 12,
-            "@media screen and (max-width:800px)": {
-              paddingTop: 0,
-              paddingLeft: 0,
-            },
+    <DndProvider backend={HTML5Backend}>
+      <Box sx={{ background: "linear-gradient(135deg, #FFF6F3,#E7FDFF)", position: "relative", paddingTop: "64px" }}>
+        <Backdrop sx={{ color: "#fff", zIndex: 1000 }} open={!isLoaded}>
+          <CircularProgress sx={{ color: "#FFC84F" }} size="8rem" />
+        </Backdrop>
+        {/* Youtubeプレイヤー */}
+        <Backdrop
+          sx={{ color: "#fff", zIndex: 1 }}
+          open={selectVoice != undefined && ytPalyerShotState}
+          onClick={() => {
+            setYtPalyerShotState(false);
+            setSelectVoice(undefined);
           }}
         >
-          <Typography
-            className="outline"
-            component="span"
-            gutterBottom
-            sx={{
-              marginY: 4,
-              fontWeight: "bold",
-              fontSize: "40px",
+          <Box>
+            <Stack direction="row" alignItems="flex-end" sx={{ marginBottom: 1 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={(e: any) => {
+                  // タイムコードを秒に変換
+                  reactPlayerRef.current?.seekTo(timecodeToSecond(selectVoice.start), "seconds");
+                  e.stopPropagation();
+                }}
+              >
+                {selectVoice?.start}～
+              </Button>
+              <Typography>{selectVoice?.title}</Typography>
+            </Stack>
+            <ReactPlayer
+              width={winWidth < 400 ? "360px" : "640px"}
+              height={winHeight < 380 ? "240px" : "360px"}
+              url={ytPalyerShotState ? selectVoice?.archiveUrl : ""}
+              ref={reactPlayerRef}
+              config={{
+                youtube: {
+                  playerVars: { controls: 1 },
+                },
+              }}
+              playing={true}
+              onStart={() => {
+                // タイムコードを秒に変換
+                reactPlayerRef.current?.seekTo(timecodeToSecond(selectVoice.start), "seconds");
+              }}
+            />
+          </Box>
+        </Backdrop>
 
+        {isLoaded && (
+          <Box
+            sx={{
+              position: "relative",
+              paddingTop: 4,
+              paddingLeft: 12,
               "@media screen and (max-width:800px)": {
                 paddingTop: 0,
                 paddingLeft: 0,
-                fontSize: "32px",
-                textAlign: "center",
-                width: "100%",
               },
             }}
           >
-            ゆにれいど！音声ボタン
-          </Typography>
+            <Typography
+              className="outline"
+              component="span"
+              gutterBottom
+              sx={{
+                marginY: 4,
+                fontWeight: "bold",
+                fontSize: "40px",
 
-          <BreadcrumbsEx
-            props={[
-              { url: "/", label: "スケジューラー" },
-              { url: "", label: "音声ボタン" },
-            ]}
-          ></BreadcrumbsEx>
+                "@media screen and (max-width:800px)": {
+                  paddingTop: 0,
+                  paddingLeft: 0,
+                  fontSize: "32px",
+                  textAlign: "center",
+                  width: "100%",
+                },
+              }}
+            >
+              ゆにれいど！音声ボタン
+            </Typography>
+            <BreadcrumbsEx
+              props={[
+                { url: "/", label: "スケジューラー" },
+                { url: "", label: "音声ボタン" },
+              ]}
+            ></BreadcrumbsEx>
+            {/* コントロール系 */}
+            <Stack direction="column" justifyContent="start" className="flex-wrap">
+              {/* ソートボタン */}
+              <Box>
+                <ChannelFillter channelInfo={channelInfo} fillterBtnClickCB={fillterBtnClickCB} sortSelect={sortSelect} resetBtnClickCB={resetBtnClickCB} />
+              </Box>
 
-          {/* コントロール系 */}
-          <Stack direction="column" justifyContent="start" className="flex-wrap">
-            {/* ソートボタン */}
-            <Box>
-              <ChannelFillter channelInfo={channelInfo} fillterBtnClickCB={fillterBtnClickCB} sortSelect={sortSelect} resetBtnClickCB={resetBtnClickCB} />
-            </Box>
+              <Stack direction="row">
+                <SoundCtrl setVolume={setVolume} allStop={() => {}} />
+                <FormGroup sx={{ marginTop: "12px", marginLeft: "20px" }}>
+                  <FormControlLabel
+                    disabled={authStatus !== "authenticated"}
+                    control={<Switch size="small" checked={myVoiceButtonDisp} onChange={myVoiceButtonDispHandler} />}
+                    label={`マイボタン ${myVoiceButtonDisp ? "ON" : "OFF"}`}
+                  />
+                </FormGroup>
+              </Stack>
 
-            <SoundCtrl setVolume={setVolume} allStop={() => {}} />
-            <SearchCtrl setSearchWords={setSearchText} voiceButtonListMaster={voiceButtonListMaster} />
-          </Stack>
-
-          {/* タブエリア */}
-          <TabContext value={tabSelect}>
-            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-              <TabList onChange={onChangeTab} aria-label="チャンネルフィルター">
-                <Tab label="member" value="1" />
-                <Tab label="category" value="2" />
-                <Tab label="timeline" value="3" />
+              <SearchCtrl setSearchWords={setSearchText} searchWords={searchText} voiceButtonListMaster={voiceButtonListMaster} />
+            </Stack>
+            <Typography sx={{ fontSize: "0.8rem", marginLeft: "10px" }}>
+              {(tabSelect == "1" || tabSelect == "2") && "※ボタン長押しでその部分のアーカイブを再生できます"}
+              {tabSelect == "3" && "※ボタン長押しでその部分のアーカイブを追加できます"}
+            </Typography>
+            {/* タブエリア */}
+            <TabContext value={tabSelect}>
+              <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+                <TabList onChange={onChangeTab} aria-label="チャンネルフィルター">
+                  <Tab label="member" value="1" />
+                  <Tab label="category" value="2" />
+                  <Tab label="timeline" value="3" />
+                </TabList>
+              </Box>
+              <TabPanelEx value="1">
+                {/* メンバー別 ボタンエリア */}
+                <Box sx={{ marginTop: 4 }}>
+                  <ViewMember
+                    voiceButtonList={voiceButtonList}
+                    ciDataList={ciDataList}
+                    volume={volume}
+                    deleteKey={deleteKey}
+                    isDeleteMode={isDeleteMode}
+                    isAdmin={isAdmin}
+                    setReLoadCt={setReLoadCt}
+                    setSelectVoice={setSelectVoice}
+                    setYtPalyerShotState={setYtPalyerShotState}
+                  />
+                </Box>
+              </TabPanelEx>
+              <TabPanelEx value="2" sx={{ margin: 0, width: "99%" }}>
+                {/* カテゴリー別 */}
+                <ViewCategory
+                  voiceButtonGroupList={voiceButtonGroupList}
+                  ciDataList={ciDataList}
+                  volume={volume}
+                  deleteKey={deleteKey}
+                  isDeleteMode={isDeleteMode}
+                  isAdmin={isAdmin}
+                  setReLoadCt={setReLoadCt}
+                  setSelectVoice={setSelectVoice}
+                  setYtPalyerShotState={setYtPalyerShotState}
+                />
+              </TabPanelEx>
+              <TabPanelEx value="3">
+                {/* タイムラインエリア */}
+                <Box sx={{ marginTop: 4 }}>
+                  <ViewTimeline
+                    voiceButtonList={voiceButtonList}
+                    voDataList={voDataList}
+                    ciDataList={ciDataList}
+                    volume={volume}
+                    deleteKey={deleteKey}
+                    isDeleteMode={isDeleteMode}
+                    isAdmin={isAdmin}
+                    setReLoadCt={setReLoadCt}
+                    setSelectVoice={setSelectVoice}
+                  />
+                </Box>
+              </TabPanelEx>
+            </TabContext>
+            <Box sx={{ paddingTop: 4 }}>{waveEditComp}</Box>
+            <TabContext value={tabValue}>
+              <TabList onChange={handleChangeTabValue} aria-label="simple tabs example">
+                <Tab label="音声追加" value="1" />
+                <Tab label="音声削除" value="2" />
               </TabList>
-            </Box>
-            <TabPanelEx value="1">
-              {/* メンバー別 ボタンエリア */}
-              <Box sx={{ marginTop: 4 }}>
-                {voiceButtonList?.map((x) => {
-                  const name = x.key;
-                  const item = x.value;
+              <TabPanel value="1">
+                <VoiceAddForm reloadFunc={setReLoadCt} selectVoice={selectVoice} isAdmin={isAdmin} />
+              </TabPanel>
+              <TabPanel value="2">
+                <VoiceDeleteForm deleteMode={isDeleteMode} deleteModeChangeFunc={setDeleteMode} setDeleteKey={setDeleteKey} reDrawFunc={setReDrawCt} />
+              </TabPanel>
+            </TabContext>
+          </Box>
+        )}
 
-                  // const name = getName(key);
-                  const key = getOrder(name);
-                  const ci = ciDataList.filter((x: any) => x.channel == name);
-                  return (
-                    <Box key={key} sx={{ position: "relative", lineHeight: "46px" }}>
-                      <Box
-                        sx={{
-                          marginBottom: 2,
-                          marginRight: 1,
-                          paddingTop: 1,
-                          paddingBottom: 1.5,
-                          paddingLeft: 4,
-                          backgroundColor: getUniBgColor(name),
-                          minHeight: "34px",
-                        }}
-                      >
-                        {item?.map((item_one: any, index: number) => {
-                          return (
-                            <VolumeContext.Provider value={volume} key={index}>
-                              <DeleteKeyContext.Provider value={deleteKey}>
-                                <DeleteModeFlagContext.Provider value={isDeleteMode}>
-                                  <Box component="span" sx={{ marginX: "2px" }}>
-                                    <VoiceButtonOne
-                                      filename={item_one.filename}
-                                      title={item_one.title}
-                                      channel={item_one.channel}
-                                      isDenoise={item_one.isDenoise}
-                                      uid={item_one.uid}
-                                      reLoadFunc={setReLoadCt}
-                                      isAdmin={isAdmin}
-                                      selectVoice={setSelectVoice}
-                                      archiveUrl={item_one.url}
-                                      start={item_one.start}
-                                      end={item_one.end}
-                                      setYtPalyerShotState={setYtPalyerShotState}
-                                      tag={item_one.tag}
-                                    />
-                                  </Box>
-                                </DeleteModeFlagContext.Provider>
-                              </DeleteKeyContext.Provider>
-                            </VolumeContext.Provider>
-                          );
-                        })}
-                      </Box>
-                      <Box
-                        sx={{
-                          justifyContent: " space-evenly",
-                          display: "flex",
-                          marginRight: "3px",
-                          position: "absolute",
-                          top: "-12px",
-                          left: "28px",
-                          "@media screen and (max-width:800px)": {
-                            left: 44,
-                          },
-                        }}
-                      >
-                        <Avatar
-                          src={ci[0]?.snippet?.thumbnails?.default?.url}
-                          sx={{
-                            width: 44,
-                            right: 44,
-                            boxShadow: 3,
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  );
-                })}
-              </Box>
-            </TabPanelEx>
-            <TabPanelEx value="2" sx={{ margin: 0, width: "99%" }}>
-              {/* カテゴリー別 */}
-              {/* ancer */}
-              <Box className="anker-group">
-                <Typography className="anker-group-title">カテゴリー一覧</Typography>
-
-                {voiceButtonGroupList?.map((x) => {
-                  const name = x.key;
-                  return (
-                    <Link key={"Anker" + name} marginRight={"8px"} href={"#" + name} className="anker-gradient">
-                      <Typography component="span" sx={{ color: "#FFF", display: "inline-block" }}>
-                        {name}
-                      </Typography>
-                    </Link>
-                  );
-                })}
-              </Box>
-
-              <Box sx={{ marginTop: 0 }}>
-                {voiceButtonGroupList?.map((x) => {
-                  const name = x.key;
-                  const item = x.value;
-
-                  const categoryChannelList = [];
-                  for (const key in item) {
-                    const spl_key = key.split("_");
-                    const c_idx = Number(spl_key[0]);
-                    const c_name = spl_key[1];
-
-                    const ci = ciDataList.filter((x: any) => x.channel == c_name);
-                    const groupItem: VoiceButtonOneProps[] = item[key];
-
-                    const gloup = (
-                      <Box key={name + key} sx={{ marginLeft: "48px", marginTop: "2px", position: "relative" }}>
-                        <Avatar
-                          src={ci[0]?.snippet?.thumbnails?.default?.url}
-                          sx={{
-                            width: 44,
-                            left: -44,
-                            boxShadow: 3,
-                            position: "absolute",
-                          }}
-                        />
-
-                        <Box sx={{ lineHeight: "12px" }}>
-                          {/* カテゴリー名毎 */}
-                          <Box>
-                            {groupItem?.map((item_one: any, index: number) => {
-                              return (
-                                <VolumeContext.Provider value={volume} key={index}>
-                                  <DeleteKeyContext.Provider value={deleteKey}>
-                                    <DeleteModeFlagContext.Provider value={isDeleteMode}>
-                                      <Box component="span" sx={{ marginX: "2px", marginBottom: "4px" }}>
-                                        <VoiceButtonOne
-                                          filename={item_one.filename}
-                                          title={item_one.title}
-                                          channel={item_one.channel}
-                                          isDenoise={item_one.isDenoise}
-                                          uid={item_one.uid}
-                                          reLoadFunc={setReLoadCt}
-                                          isAdmin={isAdmin}
-                                          selectVoice={setSelectVoice}
-                                          archiveUrl={item_one.url}
-                                          start={item_one.start}
-                                          end={item_one.end}
-                                          setYtPalyerShotState={setYtPalyerShotState}
-                                          tag={item_one.tag}
-                                        />
-                                      </Box>
-                                    </DeleteModeFlagContext.Provider>
-                                  </DeleteKeyContext.Provider>
-                                </VolumeContext.Provider>
-                              );
-                            })}
-                          </Box>
-                        </Box>
-                      </Box>
-                    );
-
-                    // categoryChannelList.push(gloup);
-                    categoryChannelList[c_idx] = gloup;
-                  }
-
-                  return (
-                    <Box key={name} sx={{ marginBottom: "16px" }}>
-                      <HeaderBoxGroups sx={{ backgroundColor: "#FFFFFF", paddingLeft: "4px", marginBottom: "4px", display: "block" }} className="original-gradient">
-                        <Typography id={name} sx={{ lineHeight: "10px", color: "#222", fontWeight: 300, paddingTop: "80px", marginTop: "-80px" }}>
-                          {name}
-                        </Typography>
-                      </HeaderBoxGroups>
-                      {categoryChannelList}
-                    </Box>
-                  );
-                })}
-              </Box>
-            </TabPanelEx>
-            <TabPanelEx value="3">
-              {/* タイムライン */}
-              <Typography sx={{ margin: 20 }}>Coming Soon</Typography>
-            </TabPanelEx>
-          </TabContext>
-
-          <Box sx={{ paddingTop: 4 }}>{waveEditComp}</Box>
-
-          <TabContext value={tabValue}>
-            <TabList onChange={handleChangeTabValue} aria-label="simple tabs example">
-              <Tab label="音声追加" value="1" />
-              <Tab label="音声削除" value="2" />
-            </TabList>
-            <TabPanel value="1">
-              <VoiceAddForm reloadFunc={setReLoadCt} selectVoice={selectVoice} isAdmin={isAdmin} />
-            </TabPanel>
-            <TabPanel value="2">
-              <VoiceDeleteForm deleteMode={isDeleteMode} deleteModeChangeFunc={setDeleteMode} setDeleteKey={setDeleteKey} reDrawFunc={setReDrawCt} />
-            </TabPanel>
-          </TabContext>
-        </Box>
-      )}
-
-      {/* 上に戻るボタン */}
-      <IconButton
-        id="goTop"
-        sx={{ position: "fixed ", bottom: "6px", right: "10px" }}
-        onClick={() => {
-          scroll.scrollToTop();
-        }}
-      >
-        <FaCircleUp />
-      </IconButton>
-    </Box>
+        {/* 上に戻るボタン */}
+        <IconButton
+          id="goTop"
+          sx={{ position: "fixed ", bottom: "6px", right: "10px" }}
+          onClick={() => {
+            scroll.scrollToTop();
+          }}
+        >
+          <FaCircleUp />
+        </IconButton>
+      </Box>
+    </DndProvider>
   );
 }
 
