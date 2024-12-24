@@ -22,6 +22,13 @@ import { SiThunderbird } from "react-icons/si";
 import chroma from "chroma-js";
 import useSWR from "swr";
 
+import { FaRocket } from "react-icons/fa";
+import { FaDragon } from "react-icons/fa";
+import { GiTigerHead } from "react-icons/gi";
+import { FaGuitar } from "react-icons/fa";
+import { CiMedicalCross } from "react-icons/ci";
+import { GiFoxTail } from "react-icons/gi";
+
 const FormData = require("form-data");
 export type VoiceButtonOneProps = {
   filename: string;
@@ -36,6 +43,7 @@ export type VoiceButtonOneProps = {
   start: string;
   end: string;
   setYtPalyerShotState: any;
+  tag: string;
 };
 const VOICE_LIST_URL = URL_BASE + "voice";
 
@@ -53,10 +61,23 @@ const getIcons = (channel: string) => {
       return <IoDiamondOutline color="#FFF" className="icon-shadow-b" />;
     case "ida":
       return <SiThunderbird color="#FF5500" className="icon-shadow-w" />;
+
+    case "rabi":
+      return <FaRocket color="#FFF" className="icon-shadow-b" />;
+    case "souta":
+      return <FaDragon color="#FFF" className="icon-shadow-b" />;
+    case "jyui":
+      return <GiTigerHead color="#FFF" className="icon-shadow-b" />;
+    case "asuto":
+      return <FaGuitar color="#FFF" className="icon-shadow-b" />;
+    case "hoguno":
+      return <CiMedicalCross color="#FFF" className="icon-shadow-b" />;
+    case "konn":
+      return <GiFoxTail color="#FFF" className="icon-shadow-b" />;
   }
 };
 
-export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoadFunc, isAdmin, selectVoice, archiveUrl, start, end, setYtPalyerShotState }: VoiceButtonOneProps) => {
+export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoadFunc, isAdmin, selectVoice, archiveUrl, start, end, setYtPalyerShotState, tag }: VoiceButtonOneProps) => {
   const url = URL_RES + channel + "/" + filename;
 
   const deleteModeCtx = useContext(DeleteModeFlagContext);
@@ -220,7 +241,7 @@ export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoa
   }, [pollingCt]);
 
   return (
-    <Box sx={{ display: "inline-block", position: "relative" }}>
+    <Box sx={{ display: "inline-block", position: "relative", marginBottom: "1px" }}>
       <Button
         disabled={!hasSound && !isAdmin}
         variant="contained"
@@ -256,8 +277,9 @@ export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoa
           }
         }}
         sx={{
+          textTransform: "none",
           backgroundColor: btnColor,
-          color: "#FFFFFF",
+          color: channel === "jyui" ? "rgb(221, 37, 114)" : "#FFFFFF",
           fontSize: "1rem",
           "&:hover": { backgroundColor: btnColor, mixBlendMode: "hard-light" },
         }}

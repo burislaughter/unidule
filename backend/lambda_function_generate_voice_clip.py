@@ -1,8 +1,4 @@
 import os
-from urllib.parse import  parse_qsl, urlparse
-import uuid
-
-import urllib
 import requests
 from requests.auth import HTTPBasicAuth
 
@@ -24,18 +20,8 @@ def createResponce(status,messsage):
 
 
 # 音声抽出用サーバーURL
-VOICE_SERVER = 'https://unidule.net:34449/uwsgi_yt_dlp'
-
-################################################################################################
-# https://www.youtube.com/live/xxxxx のURLを 
-# https://www.youtube.com/watch?v=xxxx のURLに変更する
-#################################################################################################
-def replaceLiveUrl(url):
-    p = urlparse(url)
-    # print(p[2])
-    url = p[2].replace('/live/', 'https://www.youtube.com/watch?v=')
-    return url
-
+VOICE_SERVER = 'https://unidule.net:34449/'
+# VOICE_SERVER = 'https://60.39.85.91:34449/'
 
 ################################################################################################
 # オンプレ側Youtubeダウンロ―ダー呼び出しを非同期化したもの
@@ -43,7 +29,7 @@ def replaceLiveUrl(url):
 def CallRawVideoDownloader(video_id, start, end, channel, uid):
 
     requests.get(
-        VOICE_SERVER,
+        VOICE_SERVER + 'uwsgi_yt_dlp',
         params={
             'video_id':video_id,
             'start':start,
@@ -51,6 +37,7 @@ def CallRawVideoDownloader(video_id, start, end, channel, uid):
             'channel':channel,
             'uid':uid,
         },
+        # verify=False,
         auth=HTTPBasicAuth(
             os.environ['RAW_VIDEO_USER_ID'], 
             os.environ['RAW_VIDEO_PASSWORD']
