@@ -13,7 +13,7 @@ import { EditWave, EditWaveProps } from "./EditWave";
 import useSWR from "swr";
 import useMedia from "use-media";
 import { ToneAudioBuffer } from "tone";
-import { useAuth } from "react-oidc-context";
+import { useAuthenticator } from "@aws-amplify/ui-react";
 
 const FormData = require("form-data");
 
@@ -38,6 +38,7 @@ type TResponse = {
 const VOICE_LIST_URL = URL_BASE + "voice";
 const RAW_VOICE_URL = URL_BASE + "raw_voice";
 const RAW_VOICE_POOL_URL = URL_BASE + "raw_voice_pool";
+const WAV_TO_MP3 = URL_BASE + "wav_to_mp3";
 
 export const fileToBase64 = async (file: File | Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -57,7 +58,7 @@ export const fileToBase64 = async (file: File | Blob): Promise<string> => {
 };
 
 export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormProps) => {
-  const auth = useAuth();
+  const { user, authStatus, route } = useAuthenticator((context) => [context.user, context.authStatus]);
 
   const isMobile = useMedia({ minWidth: "600px" });
   const [uploadFileName, setUploadFileName] = useState<any>("音声ファイルは未選択です");
@@ -190,6 +191,11 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
       } else {
         formData.append(key, data[key]);
       }
+    }
+
+    // ログインしている場合はユーザーIDを入れる
+    if (user) {
+      formData.append("user_id", user?.userId);
     }
 
     const axiosInstance = axios.create({
@@ -364,6 +370,29 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
     await global.navigator.clipboard.writeText(cmdStr);
   };
 
+  // WAV登録の音声をMP3にするリクエストを送る
+  const handlerWaveToMP3 = () => {
+    const axiosInstance = axios.create({
+      withCredentials: false,
+    });
+
+    // TODO: raw_voice で uid とチャンネルを返すようにする
+    const api_url = WAV_TO_MP3 + "?uid=" + selectVoice?.uid;
+    axiosInstance
+      .get(api_url)
+      .then((w) => {
+        console.log(w.data);
+      })
+      .catch((err) => {
+        console.log(WAV_TO_MP3 + ":ok");
+        console.log(err);
+
+        // setErrorYoutubeDlpOpen(true);
+        // setErrorMessage(err.message + "\n" + err.response.data !== undefined ? err.response.data : err.response.data.message);
+        // setSending(false);
+      });
+  };
+
   const onDownload = () => {
     const anchor = document.createElement("a");
     anchor.setAttribute("href", `https://unidule.jp/res/${selectVoice?.channel}/${selectVoice?.filename}`);
@@ -371,11 +400,8 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
     anchor.click();
   };
 
-  if (auth.isLoading) {
+  if (authStatus === "configuring") {
     return <Box>Loading...</Box>;
-  }
-  if (auth.error) {
-    return <Box>Encountering error... {auth.error.message}</Box>;
   }
 
   return (
@@ -398,12 +424,15 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
         <>
           <Typography sx={{ marginTop: 4 }}>{cmdStr}</Typography>
           <Button onClick={copyToClipboard}>copy</Button>
+          <Typography sx={{ marginTop: 4 }}>{selectVoice?.uid}</Typography>
 
           <Typography sx={{ marginTop: 4 }}>
             <Link href={`https://unidule.jp/res/${selectVoice?.channel}/${selectVoice?.filename}`} download={selectVoice?.filename}>
               DL
             </Link>
           </Typography>
+
+          <Button onClick={handlerWaveToMP3}>wave to mp3</Button>
         </>
       )}
 
@@ -492,7 +521,7 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
             render={({ field: { onChange } }) => (
               <>
                 <Stack my={2} direction="row" justifyContent="start" spacing={1}>
-                  <Button component="label" role={undefined} variant="contained" tabIndex={-1} startIcon={<CloudUploadIcon />} disabled={auth.isAuthenticated ? false : true}>
+                  <Button component="label" role={undefined} variant="contained" tabIndex={-1} startIcon={<CloudUploadIcon />} disabled={authStatus !== "authenticated"}>
                     MP3ファイルを選択
                     <VisuallyHiddenInput
                       type="file"
@@ -527,9 +556,7 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
           {rawVoiceFileName && <Box sx={{ margin: "1px" }}>{EditWaveConpEx}</Box>}
           <Stack direction={{ xs: "column", sm: "row" }}>
             <LoadingButton
-              // DNSの浸透までdisabled
-              // disabled={true}
-              disabled={auth.isAuthenticated ? false : true}
+              disabled={authStatus !== "authenticated"}
               loading={sending}
               component="label"
               variant="contained"
@@ -555,7 +582,11 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
 
           {rawVoiceGetProgress && <Typography sx={{ fontSize: "0.8rem", color: "#333" }}>{rawVoiceGetProgress}</Typography>}
 
-          {!auth.isAuthenticated && <Typography sx={{ fontSize: "0.8rem", color: "#FC3557" }}>音声の取得にはログインが必要です</Typography>}
+          {authStatus !== "authenticated" && (
+            <Typography sx={{ fontSize: "0.8rem", color: "#FC3557" }}>
+              音声の取得には<Link href="/login">ログイン</Link>が必要です
+            </Typography>
+          )}
 
           <Typography sx={{ fontSize: "0.8rem" }}>アーカイブから音声を直接取得します</Typography>
           <Typography sx={{ fontSize: "0.8rem" }}>音声の取得にはたまに5分くらいかかります</Typography>

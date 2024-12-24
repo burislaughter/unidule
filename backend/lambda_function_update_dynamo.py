@@ -141,7 +141,7 @@ def getChannelInfoFromYT(devKey, channel_owner):
 # table ... 対象テーブル
 # channel_owner ... チャンネル所有者名
 #################################################################################################
-def importVideoListDocument(v_list, table, channel_owner):
+def importVideoListDocument(v_list, table, channel_owner, is_force=False):
     print('importVideoListDocument start')
 
     # 重複していた場合に削除
@@ -168,11 +168,17 @@ def importVideoListDocument(v_list, table, channel_owner):
                 # 配信ステータスを平滑化
                 item['liveBroadcastContent'] = item['snippet']['liveBroadcastContent']
 
+                # 終了時刻を平滑化
+                if ('liveStreamingDetails' in item) and ('actualEndTime' in item['liveStreamingDetails']):
+                    item['endAt'] = item['liveStreamingDetails']['actualEndTime']
+                else:
+                    item['endAt'] = ''
+
                 # メン限判定判定フラグ
                 item['isMemberOnly'] = (item["status"]["privacyStatus"] == "public") and (not "viewCount" in item["statistics"])
 
                 # 限定公開は追加しない
-                if item["status"]["privacyStatus"] == "unlisted":
+                if item["status"]["privacyStatus"] == "unlisted" and is_force == False:
                     continue
 
                 # 配信予定のない枠だけを取得した場合
@@ -316,6 +322,38 @@ def liveStatusVIdeos(v_list):
     
 
 
+    
+def check_delete_video():
+    # 一日分の動画を取得
+    table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+
+    query_dynamo = importlib.import_module('lambda_function_query_dynamo') 
+    v_list = query_dynamo.getVideoList(table,'all',1)
+    v_ids = get_ids(v_list)
+
+    # Youtubeに動画DIを問い合わせ
+    # youtube クライアントの作成
+    youtube = build("youtube", "v3", developerKey = os.environ['YOUTUBE_API_KEY'])
+    youtbe_videos = youtubeAPI.get_video_ids(v_ids, youtube )
+    y_ids = get_ids(youtbe_videos)
+
+    # 問い合わせ内容の比較し削除
+    for vid in v_ids:
+        if not (vid in y_ids):
+            table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+            v_list = query_dynamo.getVideoOne(table, vid)
+            item = v_list[0]
+            item['isDeleted'] = 'true'
+            query_dynamo.updateDynamoDBOne(table, item)
+
+
+def get_ids(items):
+    ids = []
+    for item in items:
+        if not 'isDeleted' in item.keys():
+            ids.append(item['id'])
+
+    return ids
 
 ################################################################################################
 # Lambdaヘッダー
@@ -458,35 +496,23 @@ def lambda_handler(event, context):
             },
             'body': "OK"
         }
-    
-def check_delete_video():
-    # 一日分の動画を取得
-    table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+    elif exec_mode == 'UPDATE_CHAT':  # チャット情報を取得
+        # 最後に取得した日時から現在時刻の1時間前に終わった配信を対象に動画情報を取得する
+        table = os.environ['DYNAMO_DB_CHAT_TABLE']
+        is_force = event['force'] if 'force' in event else ""
 
-    query_dynamo = importlib.import_module('lambda_function_query_dynamo') 
-    v_list = query_dynamo.getVideoList(table,'all',1)
-    v_ids = get_ids(v_list)
+        query_dynamo = importlib.import_module('lambda_function_query_dynamo') 
+        v_list = query_dynamo.getVideoList(os.environ['DYNAMO_DB_VIDEO_LIST_TABLE'],'all',2)
 
-    # Youtubeに動画DIを問い合わせ
-    # youtube クライアントの作成
-    youtube = build("youtube", "v3", developerKey = os.environ['YOUTUBE_API_KEY'])
-    youtbe_videos = youtubeAPI.get_video_ids(v_ids, youtube )
-    y_ids = get_ids(youtbe_videos)
+        v_list = list(filter(lambda v: v['liveBroadcastContent'] == 'none'  , v_list))
+        v_ids = get_ids(v_list)
 
-    # 問い合わせ内容の比較し削除
-    for vid in v_ids:
-        if not (vid in y_ids):
-            table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
-            v_list = query_dynamo.getVideoOne(table, vid)
-            item = v_list[0]
-            item['isDeleted'] = 'true'
-            query_dynamo.updateVideoOne(table, item)
+        for v in v_ids:
+            query_dynamo.UpdateChat(v,is_force)
+
+        return 'okok'
 
 
-def get_ids(items):
-    ids = []
-    for item in items:
-        if not 'isDeleted' in item.keys():
-            ids.append(item['id'])
 
-    return ids
+
+

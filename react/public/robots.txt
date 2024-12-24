@@ -1,3 +1,7 @@
+User-agent: Googlebot
+Disallow: /admin/
+
 User-agent: *
 Allow: /
+
 Sitemap:https://unidule.jp/sitemap.xml

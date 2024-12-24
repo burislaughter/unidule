@@ -20,8 +20,8 @@ def createResponce(status,messsage):
 
 
 # 音声抽出用サーバーURL
-VOICE_SERVER = 'https://unidule.net:34449/'
-# VOICE_SERVER = 'https://60.39.85.91:34449/'
+# VOICE_SERVER = 'https://unidule.net:34449/'
+VOICE_SERVER = 'https://60.39.85.91:34449/'
 
 ################################################################################################
 # オンプレ側Youtubeダウンロ―ダー呼び出しを非同期化したもの
@@ -37,7 +37,7 @@ def CallRawVideoDownloader(video_id, start, end, channel, uid):
             'channel':channel,
             'uid':uid,
         },
-        # verify=False,
+        verify=False,
         auth=HTTPBasicAuth(
             os.environ['RAW_VIDEO_USER_ID'], 
             os.environ['RAW_VIDEO_PASSWORD']

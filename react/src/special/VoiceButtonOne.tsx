@@ -10,9 +10,6 @@ import { DeleteKeyContext, DeleteModeFlagContext, VolumeContext } from "./VoiceB
 import axios from "axios";
 import { AxiosRequestConfig } from "axios";
 
-import AcUnitIcon from "@mui/icons-material/AcUnit";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { FaGhost } from "react-icons/fa";
 import { GiRose } from "react-icons/gi";
 import { FaRegSnowflake } from "react-icons/fa";
@@ -42,8 +39,10 @@ export type VoiceButtonOneProps = {
   archiveUrl: string;
   start: string;
   end: string;
-  setYtPalyerShotState: any;
+  setYtPalyerShotState?: any;
+  // tlAddFunc?: any;
   tag: string;
+  timelineUid?: string | undefined;
 };
 const VOICE_LIST_URL = URL_BASE + "voice";
 
@@ -77,7 +76,7 @@ const getIcons = (channel: string) => {
   }
 };
 
-export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoadFunc, isAdmin, selectVoice, archiveUrl, start, end, setYtPalyerShotState, tag }: VoiceButtonOneProps) => {
+export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoadFunc, isAdmin, selectVoice, archiveUrl, start, end, setYtPalyerShotState, tag, timelineUid }: VoiceButtonOneProps) => {
   const url = URL_RES + channel + "/" + filename;
 
   const deleteModeCtx = useContext(DeleteModeFlagContext);
@@ -93,6 +92,7 @@ export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoa
     archiveUrl: archiveUrl,
     start: start,
     end: end,
+    timelineUid: timelineUid,
   };
 
   const [play, { stop }] = useSound(url, {
@@ -213,16 +213,18 @@ export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoa
   // マウスを押している時間をカウント
   const [pollingCt, setPollingCt] = useState(0);
 
-  // ポーリング感覚 ms
+  // ポーリング間隔 ms
   const [pollingInterval, setPollingInterval] = useState(0);
 
   // ポーリング実行関数
   const pollingFuncCB = () => {
-    if (pollingInterval == 0) {
-      return;
+    if (setYtPalyerShotState) {
+      if (pollingInterval == 0) {
+        return;
+      }
+      console.log("カウントアップ" + isCallFirst + " " + pollingCt);
+      setPollingCt((_c) => _c + 1);
     }
-    console.log("カウントアップ" + isCallFirst + " " + pollingCt);
-    setPollingCt((_c) => _c + 1);
   };
 
   // ポーリング実行Hools
@@ -232,16 +234,19 @@ export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoa
 
   // マウスの押時間で処理
   useEffect(() => {
-    if (pollingCt >= 1) {
+    if (pollingCt >= 10) {
       console.log("1秒");
-      setPropertyShow(true);
-      setPollingInterval(0);
-      setYtPalyerShotState(true);
+
+      if (setYtPalyerShotState) {
+        setPropertyShow(true);
+        setPollingInterval(0);
+        setYtPalyerShotState(true);
+      }
     }
-  }, [pollingCt]);
+  }, [pollingCt, uidRef.current]);
 
   return (
-    <Box sx={{ display: "inline-block", position: "relative", marginBottom: "1px" }}>
+    <Box sx={{ display: "inline-block", position: "relative", marginBottom: "1px", lineHeight: "46px" }}>
       <Button
         disabled={!hasSound && !isAdmin}
         variant="contained"

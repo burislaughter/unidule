@@ -1,13 +1,46 @@
-import { WindowSharp } from "@mui/icons-material";
-import { Box, Button, Menu, MenuItem, Typography } from "@mui/material";
-import { useState } from "react";
-import { useAuth } from "react-oidc-context";
+import { Box, Button, Menu, MenuItem, styled, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthenticator } from "@aws-amplify/ui-react";
+import { fetchUserAttributes, FetchUserAttributesOutput } from "aws-amplify/auth";
+
+const StyledButton = styled(Button)`
+  color: #2a8387;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 4px 20px 4px;
+  outline: 0;
+  border: 1px solid #2a8387;
+  cursor: pointer;
+  position: relative;
+  background-color: rgba(0, 0, 0, 0);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  :after {
+    content: "";
+    background-color: #c2fbd7;
+    width: 100%;
+    z-index: -1;
+    position: absolute;
+    height: 100%;
+    transition: 0.2s;
+    top: 0px;
+    left: 0px;
+  }
+  :hover:after {
+    top: 8px;
+    left: 7px;
+  }
+`;
+
 /************************************************
  / ログインボタン　
 **************************************************/
 function AuthButton() {
-  const auth = useAuth();
+  const { user, authStatus, route, signOut } = useAuthenticator((context) => [context.user, context.authStatus]);
+  const [attr, setAttrResult] = useState<FetchUserAttributesOutput>();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -19,33 +52,32 @@ function AuthButton() {
     setAnchorEl(null);
   };
 
-  const signOutRedirect = () => {
-    const clientId = "31ub05906p3boaitnr64uubkte";
-    const logoutUri = "http://localhost:3000/logoutcallback";
-    const cognitoDomain = "https://ap-northeast-1mlzsbkcqs.auth.ap-northeast-1.amazoncognito.com";
-    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
+  const getCurrentUserAsync = async () => {
+    const result = await fetchUserAttributes();
+    console.log(result);
+    setAttrResult(result);
   };
-  if (auth.isLoading) {
-    return <Box>Loading...</Box>;
+  useEffect(() => {
+    if (user) {
+      getCurrentUserAsync();
+    }
+  }, [user]);
+
+  const role = attr === undefined ? "" : attr["custom:role"];
+
+  // ログアウト実行
+  async function handleSignOut() {
+    await signOut();
   }
 
-  if (auth.error) {
-    return <Box>Encountering error... {auth.error.message}</Box>;
+  if (window.location.pathname === "/login") {
+    return <></>;
   }
 
-  const prof = auth.user?.profile as unknown as any;
-  const role = prof === undefined ? undefined : prof["custom:role"];
-  console.log("auth.isAuthenticated:" + auth.isAuthenticated);
-  if (auth.isAuthenticated) {
+  if (authStatus === "authenticated") {
     return (
       <Box>
-        <Button onClick={handleMenu} sx={{ color: "#FFFFFF", textTransform: "none" }}>
-          User: {auth.user?.profile.nickname}
-        </Button>
-        {/* <Typography> email: {auth.user?.profile.email} </Typography>
-        <Typography> ID Token: {auth.user?.id_token} </Typography>
-        <Typography> Access Token: {auth.user?.access_token} </Typography>
-        <Typography> Refresh Token: {auth.user?.refresh_token} </Typography> */}
+        <StyledButton onClick={handleMenu}>User: {attr === undefined ? "" : attr["nickname"]}</StyledButton>
 
         <Menu
           id="menu-appbar"
@@ -71,38 +103,31 @@ function AuthButton() {
             マイページ
           </MenuItem>
 
-          {role === "admin" && (
+          {(role === "admin" || role === "poweruser") && (
             <MenuItem
               onClick={() => {
-                // マイページへ
+                // 管理
                 window.location.href = `/admin`;
               }}
             >
               管理ページ
             </MenuItem>
           )}
-          <MenuItem
-            onClick={() => {
-              auth.removeUser();
-              signOutRedirect();
-            }}
-          >
-            Logout
-          </MenuItem>
+          <MenuItem onClick={handleSignOut}>Logout</MenuItem>
         </Menu>
       </Box>
     );
   }
 
+  // ログインしていなかった場合はログイン画面に遷移するリンクとして機能する
   return (
-    <Button
-      sx={{ color: "#FFFFFF", textTransform: "none" }}
+    <StyledButton
       onClick={() => {
-        auth.signinRedirect();
+        window.location.href = `/login`;
       }}
     >
       Login
-    </Button>
+    </StyledButton>
   );
 }
 

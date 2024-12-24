@@ -14,7 +14,6 @@ const BreadcrumbsEx: FC<{ props: PropsOne[] }> = ({ props }) => {
         if (x.url === "") {
           return (
             <Typography key={idx} sx={{ color: "text.primary" }}>
-              {" "}
               {x.label}
             </Typography>
           );

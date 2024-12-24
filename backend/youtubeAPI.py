@@ -21,7 +21,7 @@ def get_video_items(video_id_list, youtube):
         request = youtube.videos().list(
             part="snippet,status,statistics,liveStreamingDetails",
             id=video_ids,
-            fields="items(id,status(privacyStatus),snippet(title,channelId,description,liveBroadcastContent,publishedAt,thumbnails),statistics(viewCount,likeCount),liveStreamingDetails(scheduledStartTime,scheduledEndTime,scheduledEndTime,actualStartTime,actualEndTime))"
+            fields="items(id,status(privacyStatus),snippet(title,channelId,description,liveBroadcastContent,publishedAt,thumbnails),statistics(viewCount,likeCount),liveStreamingDetails(scheduledStartTime,scheduledEndTime,scheduledEndTime,actualStartTime,actualEndTime,activeLiveChatId))"
         )
         response = request.execute()
         video_items.extend(response["items"])
@@ -119,4 +119,32 @@ def get_channel_info(youtube, channel_id):
     )
     response = request.execute()
     return response["items"]
+
+
+####################################################################
+# Youtubeから配信のチャットを取得
+####################################################################
+def get_chat_list(youtube, chat_id):
+    chat_list = []
+
+    request = youtube.liveChatMessages().list(
+        part="snippet",
+        maxResults=500,
+        liveChatId=chat_id,
+        fields="nextPageToken,items/snippet"
+    )
+
+    try:
+        while request:
+            response = request.execute()
+            # chat_list.extend(list(map(lambda item: item["snippet"]["resourceId"]["videoId"], response["items"])))
+            chat_list.extend(response["items"])
+
+            request = youtube.liveChatMessages().list_next(request, response)
+
+        return chat_list
+
+    except Exception as e:
+        print('get_video_id_in_playlist エラー')
+        print(e)      
 

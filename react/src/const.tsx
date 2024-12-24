@@ -220,3 +220,17 @@ export const voiceCategory = [
   { value: "食べ物", name: "食べ物" },
   { value: "その他", name: "その他" },
 ];
+
+// ユーザー権限の名前を引く
+export const roleToName = (role: string) => {
+  switch (role) {
+    case "admin":
+      return "管理者";
+    case "poweruser":
+      return "強力";
+    case "guest":
+      return "ゲスト";
+    default:
+      return "一般";
+  }
+};

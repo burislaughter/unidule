@@ -12,7 +12,9 @@ PATH_PARAMETER_INFORMATION = '/information'
 PATH_PARAMETER_VOICE = '/voice'
 PATH_PARAMETER_RAW_VOICE = '/raw_voice'
 PATH_PARAMETER_RAW_VOICE_POOL = '/raw_voice_pool'
-
+PATH_PARAMETER_WAV_TO_MP3 = '/wav_to_mp3'
+PATH_PARAMETER_GET_CHAT = '/chat'
+PATH_PARAMETER_SEARCH_CHAT = '/chat_search'
 # チャンネル情報の定数
 # チャンネルオーナー、チャンネルID、新着動画プレイリストID
 channelParams = [
