@@ -355,6 +355,69 @@ def get_ids(items):
 
     return ids
 
+
+
+
+################################################################################################
+# DynamoDBに動画情報を追加
+# v_list ... 動画情報
+# table ... 対象テーブル
+# channel_owner ... チャンネル所有者名
+#################################################################################################
+def importVideoListDocument(v_list, table, channel_owner, is_force=False):
+    print('importVideoListDocument start')
+
+    # 重複していた場合に削除
+    v_list = pd.DataFrame({'id':v_list}).drop_duplicates()['id'].values.tolist()
+
+    # dynamoDBで検索する用の情報を付随する
+    table = dynamodb.Table(table)
+    try:
+        with table.batch_writer() as batch:
+            for item in v_list:
+                # DynamoDB用のフィールドを追加
+                # channel
+                item['dummy'] = 'dummy'  # ダミーパーティションキー
+                # atartAt
+                item['channel'] = channel_owner
+                item['snippet']['description'] = item['snippet']['description'][0:32]
+                item['snippet']['thumbnails']['default']={}
+                # item['snippet']['thumbnails']['medium']={}
+                item['snippet']['thumbnails']['high']={}
+                item['snippet']['thumbnails']['standard']={}
+                # item['snippet']['thumbnails']['maxres']={}
+                startAt = getStartAt(item)
+
+                # 配信ステータスを平滑化
+                item['liveBroadcastContent'] = item['snippet']['liveBroadcastContent']
+
+                # 終了時刻を平滑化
+                if ('liveStreamingDetails' in item) and ('actualEndTime' in item['liveStreamingDetails']):
+                    item['endAt'] = item['liveStreamingDetails']['actualEndTime']
+                else:
+                    item['endAt'] = ''
+
+                # メン限判定判定フラグ
+                item['isMemberOnly'] = (item["status"]["privacyStatus"] == "public") and (not "viewCount" in item["statistics"])
+
+                # 限定公開は追加しない
+                if item["status"]["privacyStatus"] == "unlisted" and is_force == False:
+                    continue
+
+                # 配信予定のない枠だけを取得した場合
+                if startAt:
+                    item['startAt'] = startAt
+                    print("[writeing]: " + item['id'])
+                    batch.put_item(Item=item)
+
+    except Exception as e:
+        print('dynamodb import エラー')
+        print(e)
+
+
+
+
+
 ################################################################################################
 # Lambdaヘッダー
 #################################################################################################

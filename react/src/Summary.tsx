@@ -1,4 +1,4 @@
-import { Typography, styled } from "@mui/material";
+import { Link, Typography, styled } from "@mui/material";
 import { ChannelIconComp } from "./ChannelIconComp";
 import { channelParams, getOrder } from "./const";
 import Table from "@mui/material/Table";
@@ -10,7 +10,8 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import { format, parse, compareAsc, differenceInDays } from "date-fns";
 import { ja } from "date-fns/locale";
-
+import YouTubeIcon from "@mui/icons-material/YouTube";
+import XIcon from "@mui/icons-material/X";
 import "./Summary.css";
 
 type SummaryProps = {
@@ -86,6 +87,7 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
         <TableCell component="th" scope="row">
           <ChannelIconComp key={idx} channel={item.channel} cb={() => {}} imgUrl={item.snippet.thumbnails.default.url} fullName={""} isSelected={true}></ChannelIconComp>
         </TableCell>
+        {/* 誕生日日まで */}
         <TableCell align="right">
           {diffDayBD == 0 && (
             <Typography variant="h6" className="gradation">
@@ -97,6 +99,7 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
           <Typography variant="caption">({bd === undefined ? "??月??日" : format(bd, "M月d日")})</Typography>
         </TableCell>
 
+        {/* デビュー日まで */}
         <TableCell align="right">
           {diffDayDD == 0 && (
             <Typography variant="h6" className="gradation">
@@ -106,6 +109,20 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
           {diffDayDD != 0 && <Typography variant="h6">{diffDayDD}日</Typography>}
 
           <Typography variant="caption">({format(dd, "M月d日")})</Typography>
+        </TableCell>
+
+        {/* Youtubeリンク */}
+        <TableCell align="right">
+          <Link target="_brank" href={"https://www.youtube.com/channel/" + channelParams[item.channel].uid} color={"#F00"}>
+            <YouTubeIcon sx={{ fontSize: "30px", height: "24px", margin: 0 }} />
+          </Link>
+        </TableCell>
+
+        {/* Xリンク */}
+        <TableCell align="center">
+          <Link target="_brank" href={"https://x.com/" + channelParams[item.channel].twitter} color={"#000"}>
+            <XIcon sx={{ fontSize: "30px", height: "24px", margin: 0 }} />
+          </Link>
         </TableCell>
       </TableRow>
     );
@@ -124,6 +141,13 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
               <TableCellEx align="right" width={"140px"}>
                 デビュー日まで
               </TableCellEx>
+              <TableCellEx align="right" width={"80px"}>
+                Youtube
+              </TableCellEx>
+              <TableCellEx align="center" width={"80px"}>
+                X
+              </TableCellEx>
+
               <TableCellEx align="right"></TableCellEx>
             </TableRow>
           </TableHead>
@@ -133,3 +157,15 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
     </>
   );
 };
+
+// <TableCell style={{ width: "80px" }}>
+// <Link target="_brank" href={"https://x.com/" + value.twitter} color={"#000"}>
+//   <XIcon sx={{ fontSize: "30px", height: "24px", margin: 0 }} />
+// </Link>
+// </TableCell>
+
+// <TableCell style={{ width: "80px" }}>
+// <Link target="_brank" href={"https://www.youtube.com/channel/" + value.uid} color={"#F00"}>
+//   <YouTubeIcon sx={{ fontSize: "30px", height: "24px", margin: 0 }} />
+// </Link>
+// </TableCell>

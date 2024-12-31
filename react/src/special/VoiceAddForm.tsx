@@ -256,7 +256,7 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
     );
   });
 
-  const VisuallyHiddenInput = styled("input")({
+  const StyledInput = styled("input")({
     clip: "rect(0 0 0 0)",
     clipPath: "inset(50%)",
     height: 1,
@@ -523,7 +523,7 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
                 <Stack my={2} direction="row" justifyContent="start" spacing={1}>
                   <Button component="label" role={undefined} variant="contained" tabIndex={-1} startIcon={<CloudUploadIcon />} disabled={authStatus !== "authenticated"}>
                     MP3ファイルを選択
-                    <VisuallyHiddenInput
+                    <StyledInput
                       type="file"
                       accept=".mp3"
                       onChange={(event) => {

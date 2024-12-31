@@ -234,7 +234,7 @@ export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoa
 
   // マウスの押時間で処理
   useEffect(() => {
-    if (pollingCt >= 10) {
+    if (pollingCt >= 1) {
       console.log("1秒");
 
       if (setYtPalyerShotState) {
@@ -248,6 +248,7 @@ export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoa
   return (
     <Box sx={{ display: "inline-block", position: "relative", marginBottom: "1px", lineHeight: "46px" }}>
       <Button
+        disableRipple
         disabled={!hasSound && !isAdmin}
         variant="contained"
         onPointerUp={() => {

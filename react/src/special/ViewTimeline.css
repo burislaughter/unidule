@@ -1,0 +1,64 @@
+.set-button {
+  background-color: #f3c945 !important;
+  color: #201347 !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+
+  &:hover {
+    color: #ffffff !important;
+    background-color: #e5863c !important;
+  }
+}
+.set-icon {
+  width: 20px;
+  height: 20px;
+  color: #201347 !important;
+}
+
+.set-button:hover .set-icon {
+  color: #fff !important;
+}
+
+.save-button {
+  background-color: #c0fad6 !important;
+  color: #13aa52 !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+
+  &:hover {
+    color: #ffffff !important;
+    background-color: #13aa52 !important;
+  }
+}
+
+.save-icon {
+  width: 20px;
+  height: 20px;
+  color: #13aa52 !important;
+}
+
+.save-button:hover .save-icon {
+  color: #fff !important;
+}
+
+.share-button {
+  background-color: #55a6e8 !important;
+  color: #fff !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+
+  &:hover {
+    color: #013960 !important;
+    background-color: #fff !important;
+  }
+}
+
+.share-icon {
+  width: 20px;
+  height: 20px;
+  color: #fff !important;
+}
+
+.share-button:hover .share-icon {
+  color: #013960 !important;
+}

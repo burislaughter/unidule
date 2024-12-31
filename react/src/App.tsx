@@ -8,26 +8,34 @@ import MyPage from "./myPage/MyPage";
 
 import AuthButton from "./AuthButton";
 import Login from "./Login";
+import ViewTest from "./viewTest/view";
+
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 
 function App() {
   return (
     <Box>
       {/* アプリメイン部分 */}
       <Box>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Main />} />
+        <DndProvider backend={HTML5Backend}>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/view" element={<ViewTest />} />
 
-            <Route path="/login" element={<Login />} />
+              <Route path="/" element={<Main />} />
 
-            <Route path="/mypage" element={<MyPage />} />
+              <Route path="/login" element={<Login />} />
 
-            <Route path="/admin" element={<Admin />} />
-            <Route path="sp">
-              <Route path="voice_button" element={<VoiceButton />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+              <Route path="/mypage" element={<MyPage />} />
+
+              <Route path="/admin" element={<Admin />} />
+              <Route path="sp">
+                <Route path="voice_button" element={<VoiceButton />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </DndProvider>
       </Box>
       <Box sx={{ position: "fixed ", top: "6px", right: "10px" }}>
         <AuthButton />
