@@ -16,8 +16,9 @@ import { Summary } from "./Summary";
 import { ReadMe } from "./ReadMe";
 import { useNavigate } from "react-router-dom";
 import { HeaderBox, TabPanelEx } from "./styled";
+import LinkPage from "./LinkPage";
 
-const buildDate = "2024.12.07";
+const buildDate = "2024.12.31";
 
 export const getChannelInfo = (cis: any[], item: any): any => {
   const cid = channelParams[item.channel];
@@ -271,12 +272,6 @@ function Main() {
         return t1 > t2;
       });
 
-      // for (let item of v_data) {
-      //   if (item.id == "AeHrOpahLLU") {
-      //     console.log();
-      //   }
-      // }
-
       // 取得した動画一覧をリストに格納
       const { archiveListMaster, futureListMaster, todayListMaster } = createSukedule(ci_data, tmp_v_date);
 
@@ -331,7 +326,10 @@ function Main() {
         <Typography sx={{ textAlign: "right" }}>ゆにれいど！[非公式]ファンメイドスケジューラー</Typography>
         <Typography sx={{ textAlign: "right", fontSize: "0.75rem" }}>build {buildDate}</Typography>
         <Typography sx={{ textAlign: "right", fontSize: "0.75rem", marginBottom: "4px" }}>
-          お問い合わせ <Link href="https://x.com/distant_zz">@distant_zz</Link>
+          お問い合わせ <Link href="https://x.com/unidule_support">@unidule_support</Link>
+        </Typography>
+        <Typography sx={{ textAlign: "right", fontSize: "0.75rem", marginBottom: "4px" }}>
+          管理人 <Link href="https://x.com/distant_zz">@distant_zz</Link>
         </Typography>
 
         {/* "online" */}
@@ -339,7 +337,7 @@ function Main() {
           <>
             <TabContext value={tabSelect}>
               <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-                <TabList onChange={onChangeTab} aria-label="チャンネルフィルター">
+                <TabList onChange={onChangeTab} aria-label="タブメニュー" variant="scrollable" scrollButtons="auto">
                   <Tab label="LIVE" value="1" />
                   <Tab
                     label="VOICE BUTTON"
@@ -354,7 +352,8 @@ function Main() {
                   />
 
                   <Tab label="SUMMARY" value="3" />
-                  <Tab label="READ ME" value="4" />
+                  <Tab label="LINKS" value="4" />
+                  <Tab label="README" value="5" />
                 </TabList>
               </Box>
               <TabPanelEx value="1">
@@ -366,6 +365,10 @@ function Main() {
                 <Summary channelInfo={channelInfo} />
               </TabPanelEx>
               <TabPanelEx value="4">
+                {/* Readme */}
+                <LinkPage />
+              </TabPanelEx>
+              <TabPanelEx value="5">
                 {/* Readme */}
                 <ReadMe />
               </TabPanelEx>

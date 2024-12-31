@@ -56,6 +56,7 @@ export const VolumeContext = createContext(60);
 
 const VOICE_LIST_URL = URL_BASE + "voice";
 const CHANNEL_INFO_URL = URL_BASE + "channel_info";
+const VOICE_TIMELINE_URL = URL_BASE + "voice_timeline";
 
 type kv = {
   key: string;
@@ -67,7 +68,7 @@ function VoiceButton() {
   // メンバーの人数
   const MEMBER_NUM = 12;
 
-  const [tabSelect, setTabSelect] = React.useState("1");
+  const [tabSelect, setTabSelect] = useState("1");
 
   const reactPlayerRef = useRef<ReactPlayer>(null);
   const [winWidth, winHeight] = useWindowSize();
@@ -95,11 +96,15 @@ function VoiceButton() {
 
   const [ytPalyerShotState, setYtPalyerShotState] = useState<boolean>(false);
 
+  const [vtu, setVtu] = useState<null | string>(null);
+
   // URLクエリパラメータの取得
   const search = useLocation().search;
   const queryParam = new URLSearchParams(search);
   // 管理モードに入る
   const isAdmin = queryParam.get("admin") == "123456";
+  // 外部からvoice_timeline_uidが指定された場合
+  const voice_timeline_uid = queryParam.get("vtu");
 
   const [selectVoice, setSelectVoice] = useState<any>();
 
@@ -413,6 +418,15 @@ function VoiceButton() {
     setVoiceButtonGroupListMaster(vo_list_all);
   };
 
+  /****************************************************************************************
+   * データの再ロード
+   ****************************************************************************************/
+  useEffect(() => {
+    if (voice_timeline_uid == null) return;
+    setVtu(voice_timeline_uid);
+    setTabSelect("3");
+  }, [voice_timeline_uid]);
+
   /******************************************************************************************************************/
   /******************************************************************************************************************/
   return (
@@ -578,6 +592,7 @@ function VoiceButton() {
                     isAdmin={isAdmin}
                     setReLoadCt={setReLoadCt}
                     setSelectVoice={setSelectVoice}
+                    vtu={vtu}
                   />
                 </Box>
               </TabPanelEx>

@@ -1,1 +1,7 @@
 /アクセス情報等.txt
+/react/res/*
+/react/raw/*
+/react/public/res/*
+/react/public/raw/*
+/backend/debug.py
+

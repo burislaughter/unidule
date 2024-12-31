@@ -18,7 +18,7 @@ import json
 
 import urllib
 from lambda_function_update_dynamo import importVideoListDocument
-from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE, PATH_PARAMETER_RAW_VOICE, PATH_PARAMETER_RAW_VOICE_POOL, PATH_PARAMETER_WAV_TO_MP3, PATH_PARAMETER_GET_CHAT, PATH_PARAMETER_SEARCH_CHAT
+from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE, PATH_PARAMETER_RAW_VOICE, PATH_PARAMETER_RAW_VOICE_POOL, PATH_PARAMETER_WAV_TO_MP3, PATH_PARAMETER_GET_CHAT, PATH_PARAMETER_SEARCH_CHAT,PATH_PARAMETER_VOICE_TIMELINE
 from util import decimal_default_proc
 from util import splite_time
 
@@ -253,18 +253,38 @@ def extendChannelInfo(item, devKey):
 ################################################################################################
 # 音声ボタン用の
 #################################################################################################
-def getVoiceList():
+def getVoiceList(is_force):
     table = dynamodb.Table(os.environ['DYNAMO_DB_VOICE_LIST_TABLE'])
     try:
         # 音声リストはスキャン
-        options = {
-            'FilterExpression': Attr('isDeleted').ne('true'),
-        }
-
-        response = table.scan(**options)
+        if is_force:
+            response = table.scan()
+        else:
+            options = {
+                'FilterExpression': Attr('isDeleted').ne('true'),
+            }
+            response = table.scan(**options)
 
         print('getVoiceList finish')
 
+        return response['Items']
+    except Exception as e:
+        print('getVoiceList エラー')
+        print(e)
+ 
+
+################################################################################################
+# ユーザーが作成した音声ボタン
+#################################################################################################
+def getVoiceListFromUserId(user_id):
+    table = dynamodb.Table(os.environ['DYNAMO_DB_VOICE_LIST_TABLE'])
+    try:
+        # 音声リストはスキャン
+        response = table.query(
+            IndexName="user_id-createdAt-index",
+            KeyConditionExpression=Key('user_id').eq(user_id)
+        )
+        print('getVoiceList finish')
         return response['Items']
     except Exception as e:
         print('getVoiceList エラー')
@@ -572,6 +592,83 @@ def UpdateChat(video_id, is_force = False):
     updateDynamoDBOne(os.environ['DYNAMO_DB_CHAT_VIDEO_IDS_TABLE'],{'id':video_id,'title':title })
 
 
+################################################################################################
+# DynamoDBに汎用的なデータを挿入する
+# item ... データ
+# table ... 対象テーブル
+#################################################################################################
+
+def importItem(item, table):
+    # dynamoDBで検索する用の情報を付随する
+    table = dynamodb.Table(table)
+    try:
+        table.put_item(Item=item)
+
+    except Exception as e:
+        print('dynamodb import エラー')
+        print(e)
+
+################################################################################################
+# Voice Timeline uid指定で取得
+#################################################################################################
+def getVoiceTimelineItemVTU(vtu,is_force):
+    table = dynamodb.Table(os.environ['DYNAMO_DB_VICE_TIMELINE_TABLE'])
+    try:
+        if is_force:
+            response = table.query(
+                KeyConditionExpression=Key('uid').eq(vtu),
+            )
+        else:
+            response = table.query(
+                KeyConditionExpression=Key('uid').eq(vtu),
+                FilterExpression=Attr('isDeleted').ne(True),
+            ) 
+
+        print('getVoiceTimelineItemVTU finish')
+
+        return response['Items']
+    except Exception as e:
+        print('getVoiceTimelineItemVTU エラー')
+        print(e)
+
+################################################################################################
+# 作成ユーザーID指定で取得
+#################################################################################################
+def getVoiceTimelineItemFromUserID(user_id,limit):
+    table = dynamodb.Table(os.environ['DYNAMO_DB_VICE_TIMELINE_TABLE'])
+    try:
+        response = table.query(
+            IndexName = 'user_id-created_at-index',
+            KeyConditionExpression=Key('user_id').eq(user_id),
+            ScanIndexForward = False, # 降順
+            Limit = int(limit)
+        )
+
+        print('getVoiceTimelineItemUserID finish')
+
+        return response['Items']
+    except Exception as e:
+        print('getVoiceTimelineItemUserID エラー')
+        print(e)
+
+
+def debugDataRewrite():
+    # dynamoDBで検索する用の情報を付随する
+    table = dynamodb.Table(os.environ['DYNAMO_DB_VICE_TIMELINE_TABLE'])
+    response = table.scan()
+    
+    try:
+        with table.batch_writer() as batch:
+            for item in response['Items']:
+                # 配信予定のない枠だけを取得した場合
+                item['created_at'] = item['create_at']
+
+                batch.put_item(Item=item)
+        
+    except Exception as e:
+        print('dynamodb import エラー :: ')
+        print(e)
+
 
 ################################################################################################
 # Lambdaヘッダー
@@ -581,7 +678,7 @@ def lambda_handler(event, context):
     httpMethod = event['httpMethod']
 
     print('=== query =============================================================')
-    print(event)
+    print(json.dumps(event))
 
     # チャンネルの動画リストを更新
     # Youtube -> DynamoDB
@@ -785,7 +882,23 @@ def lambda_handler(event, context):
         }
     elif pathParam == PATH_PARAMETER_VOICE and httpMethod == "GET":
         print('音声リスト')
-        items = getVoiceList()
+
+        if event['queryStringParameters'] != None: 
+            query = event['queryStringParameters']
+
+            user_id = query['user_id'] if ('user_id' in query) else None
+            is_force = query['is_force'] if ('is_force' in query) else False
+            print('is_force = ' + (user_id or ""))
+            print('user_id = ' + str(is_force))
+
+            if user_id != None and user_id != "":  # ユーザーID指定でリスト取得
+                items = getVoiceListFromUserId(user_id)
+            elif is_force != None and is_force != "":  # ユーザーID指定でリスト取得
+                items = getVoiceList(is_force)
+
+        else:
+            items = getVoiceList(False)
+
         return {
             'statusCode': 200,
             'headers': {
@@ -796,9 +909,10 @@ def lambda_handler(event, context):
             'body': json.dumps(items, default=decimal_default_proc, ensure_ascii=False)
             
         }
+    
+
     elif pathParam == PATH_PARAMETER_VOICE and httpMethod == "POST":
         print('音声追加リクエスト')
-        print(json.dumps(event))
 
         headers = event['headers']
         body = event['body'].encode('utf-8')
@@ -910,6 +1024,19 @@ def lambda_handler(event, context):
             return createResponce(500,"Internal Server Error")
 
         return createResponce(200,"OKOK")
+    elif pathParam == PATH_PARAMETER_VOICE and httpMethod == "PATCH":
+        print('音声更新')
+
+        return {
+            'statusCode': 201,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,DELETE,PATCH"
+            },
+            'body': '音声更新 OK'
+        }    
+
 
     elif pathParam == PATH_PARAMETER_VOICE and httpMethod == "DELETE":
         print('音声削除リクエスト')
@@ -921,12 +1048,23 @@ def lambda_handler(event, context):
         v = getVoiceOne(param['uid'][0])
         if(v != None):
             item = v[0]
-            if item['delete_key'] == param['delete_key'][0]:
+            if 'user_id' in item and 'user_id' in param:
+                if item['user_id'] == param['user_id'][0]:
+                    # 削除キーが照合できた場合は論理削除
+                    item['isDeleted'] = 'true'
+
+                    updateDynamoDBOne(os.environ['DYNAMO_DB_VOICE_LIST_TABLE'],item)
+                    print("delete ok user_id")
+                    return createResponce(200,"削除しました")
+
+            elif item['delete_key'] == param['delete_key'][0]:
                 # 削除キーが照合できた場合は論理削除
                 item['isDeleted'] = 'true'
 
                 updateDynamoDBOne(os.environ['DYNAMO_DB_VOICE_LIST_TABLE'],item)
                 print("delete ok")
+                return createResponce(200,"削除しました")
+
             else:
                 print("delete ng")
                 return createResponce(403,"削除キーが合いませんでした")
@@ -1139,5 +1277,89 @@ def lambda_handler(event, context):
             'body': 'OK',
             'isBase64Encoded': False
         }
+    elif pathParam == PATH_PARAMETER_VOICE_TIMELINE and httpMethod == "POST":  # タイムラインのPOST
+        body = event['body']
+        print(PATH_PARAMETER_VOICE_TIMELINE + "=== POST ===========================================")
 
+        bodyObj = json.loads(body)
+        uid = bodyObj['timelineId']
+        user_id = bodyObj['userId']
+        created_at = datetime.now(timezone.utc).isoformat()
+        data = bodyObj['data']  # タイムラインデータ
+        title = bodyObj['title']  # タイトル
 
+        items = {}
+        items['uid'] = uid
+        items['user_id'] = user_id or "NOLoginUser"
+        items['created_at'] = created_at
+        items['data'] = data
+        items['title'] = title
+
+        voice_timeline_table = os.environ['DYNAMO_DB_VOICE_LIST_TABLE']
+        importItem(items, voice_timeline_table)
+
+        return {
+            'headers': {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT"
+            },
+            'statusCode': 201,
+            'body': json.dumps(items, default=decimal_default_proc, ensure_ascii=False),
+            'isBase64Encoded': False
+        }
+
+    elif pathParam == PATH_PARAMETER_VOICE_TIMELINE and httpMethod == "GET":  # タイムラインのGET
+        print(PATH_PARAMETER_VOICE_TIMELINE + "=== GET ===========================================")
+        query = event['queryStringParameters']
+
+        vtu = query['vtu'] if ('vtu' in query) else None
+        user_id = query['user_id'] if ('user_id' in query) else None
+        limit = query['limit'] if ('limit' in query) else 10
+
+        print('vtu = ' + (vtu or ""))
+        print('user_id = ' + (user_id or ""))
+
+        if vtu != None and vtu != "":  # vtu 単体指定で取得
+            item = getVoiceTimelineItemVTU(vtu,False)
+        elif user_id != None and user_id != "":  # ユーザーID指定でリスト取得
+            item = getVoiceTimelineItemFromUserID(user_id, limit)
+
+        if not 'item' in locals():
+            return createResponce(400, 'Need to vtu or user_id')
+        if len(item) == 0:
+            return createResponce(404, vtu)
+
+        if vtu != None and vtu != "":
+            return createResponce(200,json.dumps(item[0], default=decimal_default_proc, ensure_ascii=False))
+        elif user_id != None and user_id != "":
+            return createResponce(200,json.dumps(item, default=decimal_default_proc, ensure_ascii=False))
+    elif pathParam == PATH_PARAMETER_VOICE_TIMELINE and httpMethod == "DELETE":  # タイムラインのDELETE
+        print(PATH_PARAMETER_VOICE_TIMELINE + "=== DELETE ===========================================")
+
+        param = parse_qs(event['body'])
+
+        # dynamoDBのvoie_listテーブルをuidで検索
+        v = getVoiceTimelineItemVTU(param['uid'][0],True)
+        if(v != None):
+            item = v[0]
+            if 'user_id' in item and 'user_id' in param:
+                if item['user_id'] == param['user_id'][0]:
+                    # 削除キーが照合できた場合は論理削除
+                    item['isDeleted'] = True
+
+                    voice_timeline_table = os.environ['DYNAMO_DB_VICE_TIMELINE_TABLE']
+                    importItem(item, voice_timeline_table)
+
+                    return {
+                        'statusCode': 201,
+                        'headers': {
+                            "Access-Control-Allow-Headers": "Content-Type",
+                            "Access-Control-Allow-Origin": '*',
+                            "Access-Control-Allow-Methods": "OPTIONS,POST,GET,DELETE"
+                        },
+                        'body': json.dumps(item, default=decimal_default_proc, ensure_ascii=False)
+                    }
+
+        return createResponce(404, vtu)

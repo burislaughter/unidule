@@ -1,10 +1,8 @@
 import { Box } from "@mui/material";
 import { VoiceButtonOne, VoiceButtonOneProps } from "./VoiceButtonOne";
 import { useEffect, useRef, useState } from "react";
-import { useDrag, DragSourceMonitor, DragPreviewImage } from "react-dnd";
+import { useDrag } from "react-dnd";
 import { useGetElementProperty } from "./useGetElementProperty";
-import { getEmptyImage } from "react-dnd-html5-backend";
-import LibraryMusicIcon from "@mui/icons-material/LibraryMusic";
 
 export type VoiceButtonOneDnDProps = VoiceButtonOneProps & {
   parentX: number;
@@ -35,7 +33,6 @@ export const VoiceButtonOneDnD = ({
   end,
   setYtPalyerShotState,
   timelineUid,
-  // tlAddFunc,
   tag,
   parentX,
   parentY,
@@ -73,23 +70,12 @@ export const VoiceButtonOneDnD = ({
 
   useEffect(() => {
     // 画像を消す場合
-    // dragPreview(<div>aaaa</div>, { captureDraggingState: true });
     // dragPreview(getEmptyImage()); // 画像を消す場合
-    // dragPreview(<div></div>); // 画像を消す場合
-    // dragPreview(targetRef.current); // コンポーネントの画像を利用
   }, [dragPreview]);
-
-  // dragPreview(refListView);
 
   return (
     <Box ref={targetRef} sx={{ display: "inline-block" }}>
-      <DragPreviewImage
-        // ドラッグ中のプレビュー画像を設定
-        connect={dragPreview}
-        src={"https://yt3.ggpht.com/BR0IZ7xBvHgHxg_4ammo2EoviYG1wUNOdXX2vKj1QH_Jm3lYKOhHIf1iOCTUA3JdF5yxLAT--w=s88-c-k-c0x00ffffff-no-rj"}
-      />
-
-      <Box ref={drag} sx={{ display: "inline-block" }}>
+      <Box ref={drag} sx={{ display: "inline-block", transform: "translate(0, 0)" }}>
         <VoiceButtonOne
           filename={filename}
           title={title}
@@ -103,7 +89,6 @@ export const VoiceButtonOneDnD = ({
           start={start}
           end={end}
           setYtPalyerShotState={setYtPalyerShotState}
-          // tlAddFunc={tlAddFunc}
           tag={tag}
           timelineUid={timelineUid}
         />
