@@ -50,6 +50,7 @@ import { ViewCategory } from "./ViewCategory";
 import { ViewTimeline } from "./ViewTimeline";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import ViewReadMe from "./ViewReadMe";
 export const DeleteModeFlagContext = createContext(false);
 export const DeleteKeyContext = createContext("");
 export const VolumeContext = createContext(60);
@@ -536,10 +537,7 @@ function VoiceButton() {
 
               <SearchCtrl setSearchWords={setSearchText} searchWords={searchText} voiceButtonListMaster={voiceButtonListMaster} />
             </Stack>
-            <Typography sx={{ fontSize: "0.8rem", marginLeft: "10px" }}>
-              {(tabSelect == "1" || tabSelect == "2") && "※ボタン長押しでその部分のアーカイブを再生できます"}
-              {tabSelect == "3" && "※ボタン長押しでその部分のアーカイブを追加できます"}
-            </Typography>
+            <Typography sx={{ fontSize: "0.8rem", marginLeft: "10px" }}>操作説明はREADMEをご覧ください</Typography>
             {/* タブエリア */}
             <TabContext value={tabSelect}>
               <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -547,6 +545,7 @@ function VoiceButton() {
                   <Tab label="member" value="1" />
                   <Tab label="category" value="2" />
                   <Tab label="timeline" value="3" />
+                  <Tab label="README" value="4" />
                 </TabList>
               </Box>
               <TabPanelEx value="1">
@@ -596,20 +595,30 @@ function VoiceButton() {
                   />
                 </Box>
               </TabPanelEx>
+
+              <TabPanelEx value="4">
+                {/* タイムラインエリア */}
+                <Box sx={{ marginTop: 4 }}>
+                  <ViewReadMe />
+                </Box>
+              </TabPanelEx>
             </TabContext>
             <Box sx={{ paddingTop: 4 }}>{waveEditComp}</Box>
-            <TabContext value={tabValue}>
-              <TabList onChange={handleChangeTabValue} aria-label="simple tabs example">
-                <Tab label="音声追加" value="1" />
-                <Tab label="音声削除" value="2" />
-              </TabList>
-              <TabPanel value="1">
-                <VoiceAddForm reloadFunc={setReLoadCt} selectVoice={selectVoice} isAdmin={isAdmin} />
-              </TabPanel>
-              <TabPanel value="2">
-                <VoiceDeleteForm deleteMode={isDeleteMode} deleteModeChangeFunc={setDeleteMode} setDeleteKey={setDeleteKey} reDrawFunc={setReDrawCt} />
-              </TabPanel>
-            </TabContext>
+
+            {tabSelect == "1" && (
+              <TabContext value={tabValue}>
+                <TabList onChange={handleChangeTabValue} aria-label="simple tabs example">
+                  <Tab label="音声追加" value="1" />
+                  <Tab label="音声削除" value="2" />
+                </TabList>
+                <TabPanel value="1">
+                  <VoiceAddForm reloadFunc={setReLoadCt} selectVoice={selectVoice} isAdmin={isAdmin} />
+                </TabPanel>
+                <TabPanel value="2">
+                  <VoiceDeleteForm deleteMode={isDeleteMode} deleteModeChangeFunc={setDeleteMode} setDeleteKey={setDeleteKey} reDrawFunc={setReDrawCt} />
+                </TabPanel>
+              </TabContext>
+            )}
           </Box>
         )}
 

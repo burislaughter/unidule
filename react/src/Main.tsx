@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { HeaderBox, TabPanelEx } from "./styled";
 import LinkPage from "./LinkPage";
 
-const buildDate = "2024.12.31";
+const buildDate = "2025.01.16";
 
 export const getChannelInfo = (cis: any[], item: any): any => {
   const cid = channelParams[item.channel];
@@ -125,7 +125,10 @@ function Main() {
         } else {
           const dt = new Date(obj.startAt);
           dt_str = format(new Date(dt), "yyyy/MM/dd HH:mm");
-          if (startDt.getTime() > dt.getTime()) {
+          if (obj.liveBroadcastContent == "live") {
+            // 配信中は問答無用で本日扱い
+            isToday = true;
+          } else if (startDt.getTime() > dt.getTime()) {
             // 過去
             isArchive = true;
           } else if (endDt.getTime() < dt.getTime()) {
