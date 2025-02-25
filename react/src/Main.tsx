@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { HeaderBox, TabPanelEx } from "./styled";
 import LinkPage from "./LinkPage";
 
-const buildDate = "2025.01.16";
+const buildDate = "2025.02.22";
 
 export const getChannelInfo = (cis: any[], item: any): any => {
   const cid = channelParams[item.channel];
@@ -353,25 +353,36 @@ function Main() {
                       textDecoration: "underline",
                     }}
                   />
+                  <Tab
+                    label="Roulette"
+                    value="3"
+                    onClick={() => {
+                      navigate("/sp/roulette");
+                    }}
+                    sx={{
+                      color: "#0371D6",
+                      textDecoration: "underline",
+                    }}
+                  />
 
-                  <Tab label="SUMMARY" value="3" />
-                  <Tab label="LINKS" value="4" />
-                  <Tab label="README" value="5" />
+                  <Tab label="SUMMARY" value="4" />
+                  <Tab label="LINKS" value="5" />
+                  <Tab label="README" value="6" />
                 </TabList>
               </Box>
               <TabPanelEx value="1">
                 {/* ソートボタン */}
                 <ChannelFillter channelInfo={channelInfo} fillterBtnClickCB={fillterBtnClickCB} sortSelect={sortSelect} resetBtnClickCB={resetBtnClickCB} />
               </TabPanelEx>
-              <TabPanelEx value="3">
+              <TabPanelEx value="4">
                 {/* サマリー */}
                 <Summary channelInfo={channelInfo} />
               </TabPanelEx>
-              <TabPanelEx value="4">
+              <TabPanelEx value="5">
                 {/* Readme */}
                 <LinkPage />
               </TabPanelEx>
-              <TabPanelEx value="5">
+              <TabPanelEx value="6">
                 {/* Readme */}
                 <ReadMe />
               </TabPanelEx>

@@ -1,7 +1,7 @@
 import { Avatar, Box, Link, Typography } from "@mui/material";
 import { DeleteKeyContext, DeleteModeFlagContext, VolumeContext } from "./VoiceButton";
 import { VoiceButtonOne, VoiceButtonOneProps } from "./VoiceButtonOne";
-import { HeaderBoxGroups } from "../styled";
+import { HeaderBoxGroups } from "../../styled";
 
 export type ViewCategoryProp = {
   voiceButtonGroupList: any[];

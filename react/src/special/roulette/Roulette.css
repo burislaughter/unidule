@@ -1,0 +1,15 @@
+.outline-roulette {
+    display: inline-block;
+    color: #ffffff; /* 文字の色 */
+    letter-spacing: 6px; /* 文字間 */
+    text-shadow:
+      3px 3px 3px #0065e0,
+      -3px 3px 3px #0065e0,
+      3px -3px 3px #0065e0,
+      -3px -3px 3px #0065e0,
+      3px 0px 3px #0065e0,
+      0px 3px 3px #0065e0,
+      -3px 0px 3px #0065e0,
+      0px -3px 3px #0065e0; /* 文字の影 */
+  }
+  

@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from "react";
 
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions";
-import { makeWav } from "../const";
+import { makeWav } from "../../const";
 
 export type EditWaveProps = {
   url: string;
