@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { fetchUserAttributes, FetchUserAttributesOutput } from "aws-amplify/auth";
 import { roleToName, URL_BASE } from "../const";
 import axios, { AxiosRequestConfig } from "axios";
-import { VoiceButtonOne } from "../special/VoiceButtonOne";
+import { VoiceButtonOne } from "../special/voiceButton/VoiceButtonOne";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import { EditText, FixCallbackParamas } from "./EditText";
 import { EditSelect } from "./EditSelect";

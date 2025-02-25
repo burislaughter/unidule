@@ -227,7 +227,7 @@ def getInformation():
         response = table.query(
             KeyConditionExpression=Key('dummy').eq('dummy') & Key('endAt').gte(dt_limit),
             ScanIndexForward=False,
-            FilterExpression=Key('startAt').lte(dt_limit),
+            FilterExpression=Key('startAt').lte(dt_limit) | Key('dispStatus').eq('upcoming') ,
         )
 
         print('getInformation finish')

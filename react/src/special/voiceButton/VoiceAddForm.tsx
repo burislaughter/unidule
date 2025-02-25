@@ -1,5 +1,5 @@
 import { Box, FormControl, InputLabel, FormHelperText, Button, Typography, TextField, Select, MenuItem, FormGroup, Stack, styled, SelectChangeEvent, IconButton, Alert, Link } from "@mui/material";
-import { ChannelAndName, getChannelAndName, makeWav, URL_BASE, URL_HOST, voiceCategory } from "../const";
+import { ChannelAndName, getChannelAndName, makeWav, URL_BASE, URL_HOST, voiceCategory } from "../../const";
 import "./VoiceAddForm.css";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import Snackbar from "@mui/material/Snackbar";

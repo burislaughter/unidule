@@ -1,7 +1,7 @@
 import { Autocomplete, AutocompleteChangeReason, AutocompleteValue, Box, Chip, Input, ListItem, ListItemText, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
-import { getUniBgColor, getUniBtnColor } from "../const";
+import { getUniBgColor, getUniBtnColor } from "../../const";
 
 export type SearchCtrlProp = {
   setSearchWords: any;
