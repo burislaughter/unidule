@@ -11,6 +11,11 @@ dynamodb = boto3.resource('dynamodb')
 
 def UpdateTweet(table, body):
 
+    tweetEmbedCode = urllib.parse.unquote_plus(body["TweetEmbedCode"])
+    # @が２個以上出現していたら誰かへの返信という扱い
+    if tweetEmbedCode.count('@') > 1:
+        return None
+
     table = dynamodb.Table(table)
 
     item = {}
@@ -20,13 +25,13 @@ def UpdateTweet(table, body):
     # June 18, 2024 at 12:32AM
     # %B %d, %Y at %I:%M%p
     dt = datetime.datetime.strptime(createdAt, '%B %d, %Y at %I:%M%p')
-    # item["createdAtTime"] = math.floor(float(dt.strftime('%Y%m%d%H%M%S')))
     item["createdAtTime"] = math.floor(dt.timestamp())
 
     item["UserName"] = body["UserName"]
     item["UserImageUrl"] = body["UserImageUrl"]
     item["FirstLinkUrl"] = body["FirstLinkUrl"]
-    item["TweetEmbedCode"] = urllib.parse.unquote_plus(body["TweetEmbedCode"])
+
+    item["TweetEmbedCode"] = tweetEmbedCode
     item["LinkToTweet"] = body["LinkToTweet"]
     item["CreatedAt"] = dt.strftime('%Y年%m月%d日 %H時%M分')
 

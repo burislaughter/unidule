@@ -18,7 +18,7 @@ import json
 
 import urllib
 from lambda_function_update_dynamo import importVideoListDocument
-from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE, PATH_PARAMETER_RAW_VOICE, PATH_PARAMETER_RAW_VOICE_POOL, PATH_PARAMETER_WAV_TO_MP3, PATH_PARAMETER_GET_CHAT, PATH_PARAMETER_SEARCH_CHAT,PATH_PARAMETER_VOICE_TIMELINE
+from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE, PATH_PARAMETER_RAW_VOICE, PATH_PARAMETER_RAW_VOICE_POOL, PATH_PARAMETER_WAV_TO_MP3, PATH_PARAMETER_GET_CHAT, PATH_PARAMETER_SEARCH_CHAT,PATH_PARAMETER_VOICE_TIMELINE, PATH_PARAMETER_GET_CHAT_MESSAGE, PATH_PARAMETER_VIDEO_LIST_BETWEEN
 from util import decimal_default_proc
 from util import splite_time
 
@@ -46,18 +46,24 @@ dynamodb = boto3.resource('dynamodb')
 # table ... 対象テーブル
 # channel_owner ... チャンネル所有者名
 #################################################################################################
-def getVideoList(table, channel_owner, days=7):
+def getVideoList(table, channel_owner, days=7,ltDays=0 ):
     print('getVideoList start')
 
     table = dynamodb.Table(table)
     try:
         if channel_owner == 'all':
-            date = datetime.now(timezone.utc) - timedelta(days=days)
-            baseAt = date.isoformat()
+            baseAt = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+            # ltDays == 0 つまり指定なしなら未来を含む
+            if ltDays == 0 :
+                condition = Key('dummy').eq('dummy') & Key('startAt').gte(baseAt)
+            else:
+                ltAt = (datetime.now(timezone.utc) - timedelta(days=ltDays)).isoformat()
+                condition = Key('dummy').eq('dummy') & Key('startAt').between(baseAt,ltAt)
 
             response = table.query(
                 IndexName = 'dummy-startAt-index',
-                KeyConditionExpression=Key('dummy').eq('dummy') & Key('startAt').gte(baseAt),
+                # KeyConditionExpression=Key('dummy').eq('dummy') & Key('startAt').gte(baseAt),
+                KeyConditionExpression=condition,
                 ScanIndexForward=False
             )
             data = response['Items']
@@ -137,6 +143,27 @@ def updateDynamoDBOne(table, item):
         print('updateDynamoDBOne エラー')
         print(e)
 
+################################################################################################
+# DynamoDBからアイテムを削除する
+# table ... 対象テーブル
+#################################################################################################
+def deleteDynamoDBTweet(tweetId, table):
+    print('deleteDynamoDBTweet ' + table +':'+ str(tweetId))
+
+    table = dynamodb.Table(table)
+    try:
+        responce = table.delete_item(
+            Key={
+                    'dummy': 'dummy',
+                    'createdAtTime': tweetId
+                }
+        )
+        print('updateDynamoDBOne finish')    
+        return responce
+    except Exception as e:
+        print('updateDynamoDBOne エラー')
+        print(e)
+
 
 
 ################################################################################################
@@ -167,15 +194,16 @@ def getChannelInfoDocument(table):
 # DynamoDBからチャンネル情報を取得
 # 戻り値 ... 予定表ツイート
 #################################################################################################
-def getScheduleTweetDocument(table):
+def getScheduleTweetDocument(table, start_at, end_at):
     print('getScheduleTweetDocument start')
-    dt_now = math.floor((datetime.now() + timedelta(days=-8)).timestamp())
 
     # dynamoDBで検索する用の情報を付随する
     table = dynamodb.Table(table)
     try:
         response = table.query(
-            KeyConditionExpression=Key('dummy').eq('dummy') & Key('createdAtTime').gt(dt_now),
+            # KeyConditionExpression=Key('dummy').eq('dummy') & Key('createdAtTime').gt(target_at),
+            KeyConditionExpression=Key('dummy').eq('dummy') & Key('createdAtTime').between(start_at, end_at),
+
             ScanIndexForward=False
         )
 
@@ -218,16 +246,24 @@ def getSystemStatus():
 # インフォメーションの取得
 # 現在時刻から開催中のお知らせを取得する
 #################################################################################################
-def getInformation():
-    dt_limit = datetime.now(timezone.utc).isoformat()
-
+def getInformation(target_dt, is_past):
     table = dynamodb.Table('information')
     try:
+        condition = None
+        filter = None
+        
+        if is_past: 
+            condition = Key('dummy').eq('dummy') & Key('endAt').gte(target_dt)
+            filter = Key('startAt').lte(target_dt)
+        else:
+            condition = Key('dummy').eq('dummy') & Key('endAt').gte(target_dt)
+            filter = Key('startAt').lte(target_dt) | Key('dispStatus').eq('upcoming') 
+
         # 開始と終了の日時から開催中のお知らせを取得する
         response = table.query(
-            KeyConditionExpression=Key('dummy').eq('dummy') & Key('endAt').gte(dt_limit),
-            ScanIndexForward=False,
-            FilterExpression=Key('startAt').lte(dt_limit) | Key('dispStatus').eq('upcoming') ,
+            KeyConditionExpression= condition,
+            ScanIndexForward=True,
+            FilterExpression=filter
         )
 
         print('getInformation finish')
@@ -513,7 +549,7 @@ def getViceoInfos(video_ids):
 
 
 ################################################################################################
-# チャットテーブル検索
+# Youtubeからチャット取得
 # video_ids ... 動画id
 #################################################################################################
 def UpdateChat(video_id, is_force = False):
@@ -522,7 +558,7 @@ def UpdateChat(video_id, is_force = False):
     if len(getChatVideoID(video_id)) != 0 and is_force == False:
         return createResponce(202, video_id)
     
-    # dynamoDBからvideoID指定で配信/動画除法の取得
+    # dynamoDBからvideoID指定で配信/動画情報の取得
     video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
     v_list = getVideoOne(video_list_table, video_id)
 
@@ -652,6 +688,44 @@ def getVoiceTimelineItemFromUserID(user_id,limit):
         print(e)
 
 
+################################################################################################
+# 特定メッセージで検索
+#################################################################################################
+def getMessage(message):
+    table = dynamodb.Table(os.environ['DYNAMO_DB_CHAT_TABLE'])
+    options = {
+        'FilterExpression': Attr('message').contains(message)
+    }
+
+    try:
+        response = table.scan(**options)
+        data = pd.DataFrame(response['Items'])
+
+        # レスポンスに LastEvaluatedKey が含まれなくなるまでループ処理を実行する
+        while 'LastEvaluatedKey' in response:
+            response = table.scan(**options)
+            if 'LastEvaluatedKey' in response:
+                print("LastEvaluatedKey: {}".format(response['LastEvaluatedKey']))
+            
+                options['ExclusiveStartKey'] = response['LastEvaluatedKey']
+        
+            data = pd.concat([data,pd.DataFrame(response['Items'])])
+
+        sorted_data =  data.sort_values('datetime').reset_index()
+
+
+        with open('大感謝.csv', mode='w', encoding='utf-8') as f:
+            for i, item in sorted_data.iterrows():
+                f.write(str(item['datetime']) + ',' + str(item['video_id']) + ',' + str(item['message'])+ ',' + str(item['author_name'])+ ',' + str(item['video_title']) + '\n')
+
+
+
+        return sorted_data.to_json(force_ascii=False)
+    except Exception as e:
+        print('getVoiceTimelineItemUserID エラー')
+        print(e)
+
+
 def debugDataRewrite():
     # dynamoDBで検索する用の情報を付随する
     table = dynamodb.Table(os.environ['DYNAMO_DB_VICE_TIMELINE_TABLE'])
@@ -668,6 +742,28 @@ def debugDataRewrite():
     except Exception as e:
         print('dynamodb import エラー :: ')
         print(e)
+
+
+def GetPostDateTime(id):
+    # Twitterエポック(2010-11-04 01:42:54.657)
+    twitterEpoch = 1288834974657
+
+    # UNIXエポック(1970/01/01 00:00:00.000)
+    # unixEpoch = 62135596800000
+    unixEpoch = 0
+
+    # タイムスタンプのビット数
+    timestampBits = 41
+    # タイムスタンプのシフト数
+    timestampShift = 22
+    # タイムスタンプのマスク
+    timestampMask = -1 ^ (-1 << timestampBits)
+
+    timestamp = int((((int(id) >> timestampShift) & timestampMask) + twitterEpoch + unixEpoch) / 1000)
+    dt = datetime.fromtimestamp(timestamp, timezone(timedelta(hours=9)) )
+
+    return dt
+
 
 
 ################################################################################################
@@ -698,6 +794,26 @@ def lambda_handler(event, context):
         
         return createResponce(200,json.dumps(v_list, default=decimal_default_proc, ensure_ascii=False))
     
+    elif pathParam == PATH_PARAMETER_VIDEO_LIST_BETWEEN:    # 期間でチャンネルの動画リストを取得
+        # https://api.unidule.jp/prd/video_list?channel=maru
+
+        # maru ... 花ノ木まる
+        # all ... 全員
+        channel_owner = event['queryStringParameters']['channel']
+        start_at = event['queryStringParameters']['start_at']
+        end_at = event['queryStringParameters']['end_at']
+
+        start_date = datetime.strptime(start_at, "%Y-%m-%dT%H:%M:%S%z")
+        end_date = datetime.strptime(end_at, "%Y-%m-%dT%H:%M:%S%z")
+        now = datetime.now(timezone.utc)
+        difference_start = now - start_date
+        difference_end = now - end_date
+
+        video_list_table = os.environ['DYNAMO_DB_VIDEO_LIST_TABLE']
+        v_list = getVideoList(video_list_table, channel_owner, difference_start.days, difference_end.days)
+        
+        return createResponce(200,json.dumps(v_list, default=decimal_default_proc, ensure_ascii=False))
+        
     elif pathParam == PATH_PARAMETER_VIDEO and httpMethod == "GET":    # チャンネルの動画を一つ取得
         # https://api.unidule.jp/prd/video?id=L_oVYEVYnI8
         print("GET REQUEST")
@@ -812,12 +928,22 @@ def lambda_handler(event, context):
                 },
                 'body': "NGNG"
             }
-    elif pathParam == PATH_PARAMETER_SCHEDULE_TWEET:
+    elif pathParam == PATH_PARAMETER_SCHEDULE_TWEET and httpMethod == "GET":
 
         # ツイッターから取得した予定表ツイートを取得する
         video_list_table = os.environ['DYNAMO_DB_TWITTER_TABLE']
+        
+        if event['queryStringParameters'] == None: 
+            event['queryStringParameters'] = {}
+            
+        query = event['queryStringParameters']
 
-        resurt = getScheduleTweetDocument(video_list_table)
+        target_dt = datetime.strptime(query['target_at'], "%Y-%m-%dT%H:%M:%S%z") if ('target_at' in query) else datetime.now(timezone.utc)
+
+        start_at = math.floor((target_dt + timedelta(days=-8)).timestamp())
+        end_at = math.floor((target_dt).timestamp())
+
+        resurt = getScheduleTweetDocument(video_list_table, start_at, end_at)
 
         return {
                 'statusCode': 200,
@@ -869,7 +995,15 @@ def lambda_handler(event, context):
         }
     elif pathParam == PATH_PARAMETER_INFORMATION and httpMethod == "GET":
         print('インフォメーション')
-        items = getInformation()
+        
+        if event['queryStringParameters'] == None: 
+            event['queryStringParameters'] = {}
+            
+        query = event['queryStringParameters']
+
+        target_dt = datetime.strptime(query['target_at'], "%Y-%m-%dT%H:%M:%S%z").isoformat() if ('target_at' in query) else datetime.now(timezone.utc).isoformat()
+
+        items = getInformation(target_dt, ('target_at' in query))
         return {
             'statusCode': 200,
             'headers': {
@@ -1278,9 +1412,9 @@ def lambda_handler(event, context):
             'isBase64Encoded': False
         }
     elif pathParam == PATH_PARAMETER_VOICE_TIMELINE and httpMethod == "POST":  # タイムラインのPOST
-        body = event['body']
         print(PATH_PARAMETER_VOICE_TIMELINE + "=== POST ===========================================")
 
+        body = event['body']
         bodyObj = json.loads(body)
         uid = bodyObj['timelineId']
         user_id = bodyObj['userId']
@@ -1295,7 +1429,7 @@ def lambda_handler(event, context):
         items['data'] = data
         items['title'] = title
 
-        voice_timeline_table = os.environ['DYNAMO_DB_VOICE_LIST_TABLE']
+        voice_timeline_table = os.environ['DYNAMO_DB_VICE_TIMELINE_TABLE']
         importItem(items, voice_timeline_table)
 
         return {
@@ -1362,4 +1496,118 @@ def lambda_handler(event, context):
                         'body': json.dumps(item, default=decimal_default_proc, ensure_ascii=False)
                     }
 
-        return createResponce(404, vtu)
+    elif pathParam == PATH_PARAMETER_GET_CHAT_MESSAGE and httpMethod == "GET":  # チャットのメッセージ検索(Debug)
+        print(PATH_PARAMETER_GET_CHAT_MESSAGE + "=== GET ===========================================")
+
+        # dynamoDBのchatテーブルからメッセージを検索
+        v = getMessage('大感謝')
+        return {
+            'statusCode': 200,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,DELETE"
+            },
+            'body': v
+        }
+
+    elif pathParam == PATH_PARAMETER_SCHEDULE_TWEET and httpMethod == "POST":  # ツイッターの予定を追加する
+        print(PATH_PARAMETER_SCHEDULE_TWEET + "=== POST ===========================================")
+
+        # 予定に追加するurlを取得
+        # {\"tweetUrl\":\"https://x.com/hananoki_maru/status/1918886392437842337\"}
+        body = event['body']
+        bodyObj = json.loads(body)
+        tweetUrl = bodyObj['tweetUrl']
+
+        # Twitterの埋め込みポストの取得
+        # https://publish.twitter.com/oembed?url={url}&partner=&hide_thread=false
+        # x_api_call_url = f'https://publish.twitter.com/oembed?url={url}&partner=&hide_thread=false'
+        # x_api_call_url = f'https://publish.twitter.com/oembed?url=https%3A%2F%2Fx.com%2Fhananoki_maru%2Fstatus%2F1918886392437842337&partner=&hide_thread=false'
+        x_api_call_url = 'https://publish.twitter.com/oembed'
+
+        result = ""
+        try:
+            print(tweetUrl)
+            res = requests.get(
+                x_api_call_url,
+                params={
+                    'url':tweetUrl,
+                    'partner':'',
+                    'hide_thread':'false',
+                    'lang':'ja'
+                }
+            )
+            
+            if res.status_code == 200:
+                result = json.loads(res.text)['html']
+            else:
+                result = str(res.status_code) + ':' + res.reason
+
+        except Exception as e:
+            print(f'=== {PATH_PARAMETER_SCHEDULE_TWEET} Error =============')
+            print(e)        
+
+            return {
+                'statusCode': 500,
+                'headers': {
+                    "Access-Control-Allow-Headers": "Content-Type",
+                    "Access-Control-Allow-Origin": '*',
+                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,DELETE"
+                },
+                'body': 'OK'
+            }
+        
+        # DynamoDBに格納する情報を取得
+        sp = tweetUrl.split('/status/')
+        dt = GetPostDateTime(sp[1])
+        user = sp[0].split('https://x.com/')
+
+        event = {}
+        post_object = {
+            'dummy':'dummy',
+            'createdAtTime' : int(dt.timestamp()),
+            'CreatedAt' : dt.strftime('%Y年%m月%d日 %H時%M分'),
+            'TweetEmbedCode' : result,
+            'LinkToTweet':tweetUrl,
+            'UserImageUrl':"",
+            'UserName':user[1],
+        }
+
+        # DynamoDBに追加処理
+        importItem(post_object, os.environ['DYNAMO_DB_TWITTER_TABLE'])
+
+        return {
+            'statusCode': 201,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,DELETE"
+            },
+            'body': result
+        }
+    elif pathParam == PATH_PARAMETER_SCHEDULE_TWEET and httpMethod == "DELETE":    # チャンネルの動画を論理削除
+        print('予定ツイート削除リクエスト')
+        print(json.dumps(event))
+
+        param = parse_qs(event['body'])
+        tweetUrl = param['tweetUrl'][0]
+        sp = tweetUrl.split('/status/')
+        dt = GetPostDateTime(sp[1])
+        createdAtTime = int(dt.timestamp())
+
+        deleteDynamoDBTweet(createdAtTime, os.environ['DYNAMO_DB_TWITTER_TABLE'])
+
+
+        # updateDynamoDBOne(video_list_table, item)
+        
+        return {
+            'statusCode': 202,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET,DELETE"
+            },
+            'body': "DELETE OK"
+        }
+

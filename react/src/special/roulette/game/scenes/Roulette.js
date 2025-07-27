@@ -70,8 +70,6 @@ export class Roulette extends Scene {
   pieGrph = null
   pieTitles = []
 
-  triangleSp = null
-
   resultText = null
 
   // 音声再生のトグルスイッチ
@@ -115,20 +113,87 @@ export class Roulette extends Scene {
     .setAlpha(0);
 
     EventBus.emit("current-scene-ready", this);
-    // 渚さん
-    this.nagisa01 = this.add.container(this.bgCenterX, this.bgCenterY).setDepth(101);
-    const nagi_sp = this.add.image(0, 0, "nagisa01").setDepth(0).setOrigin(0.5, 0.5);
-    this.nagisa02k = this.add.image(0, 0, "nagisa02k").setDepth(0).setOrigin(0.5, 0.5);
-    this.nagisa02k.setAlpha(0).setVisible(false).setOrigin(0.5, 0.310);
+    // ルーレットコンテナ ///////////////////////////////////////////////////////////////////////////////////////
+    this.updateContainer('nagisa')
 
-    this.nagisa01.add(nagi_sp)
-
-    // カーソル▽
-    this.triangleSp = this.add.triangle(0, -460,-20,-50, 20,-50,0,50,0xFFFF00,1).setOrigin(0, 0) ;
-
-    // ゲームオブジェクトを保持
-    this.nagisa01.add(this.triangleSp)
   }
+
+  updateContainer(selectMain){
+    if(this.rouletteMainContainer){
+      this.rouletteMainContainer.destroy()
+    }
+    
+    if(this.finishSp){
+      this.finishSp.destroy()
+    }
+
+    // ルーレットコンテナ ///////////////////////////////////////////////////////////////////////////////////////
+    this.rouletteMainContainer = this.add.container(this.bgCenterX, this.bgCenterY).setDepth(101);
+
+    if(selectMain == 'nagisa'){
+      // 渚さん
+      this.rouletteMainContainer.add(this.add.image(0, 0, "nagisa01").setDepth(0).setOrigin(0.5, 0.5))
+
+      // カーソル▽ ゲームオブジェクトを保持
+      this.rouletteMainContainer.add(this.add.triangle(0, -460,-20,-50, 20,-50,0,50,0xFFFF00,1).setOrigin(0, 0))
+
+      // 決定時演出
+      this.finishSp = this.add.image(0, 0, "nagisa02k").setDepth(0).setOrigin(0.5, 0.5);
+      this.finishSp.setAlpha(0).setVisible(false).setOrigin(0.5, 0.310);
+
+      this.initVoice = [
+        'init_n_0',
+        'init_n_1',
+        'init_n_2',
+        'init_n_3',
+        'init_n_4',
+        'init_n_5',
+      ];
+  
+      this.finishVoice = [
+        'finish_n_0',
+        'finish_n_1',
+        'finish_n_2',
+        'finish_n_3',
+        'finish_n_4',
+        'finish_n_5',
+        'finish_n_6',
+      ];
+  
+
+    } else if(selectMain == 'unorabi'){
+      // うのらび
+      this.rouletteMainContainer.add(this.add.image(0, 0, "unorabi01").setDepth(0).setOrigin(0.5, 0.5))
+
+      // カーソル▽ ゲームオブジェクトを保持
+      this.rouletteMainContainer.add(this.add.triangle(0, -460,-20,-50, 20,-50,0,50,0xFFFF00,1).setOrigin(0, 0))
+
+      // 決定時演出
+      this.finishSp = this.add.image(0, 0, "unorabi02").setDepth(0).setOrigin(0.5, 0.5);
+      this.finishSp.setAlpha(0).setVisible(false).setOrigin(0.5, 0.5).setScale(0.8);
+
+      this.initVoice = [
+        'init_u_0',
+        'init_u_1',
+        'init_u_2',
+        'init_u_3'      ];
+  
+      this.finishVoice = [
+        'finish_u_0',
+        'finish_u_1',
+        'finish_u_2',
+        'finish_u_3',
+        'finish_u_4'
+      ];
+    }
+
+    // アニメーション等を停止
+    this.rouletteState = this.ROULETTE_STATE_NONE;
+
+    
+
+  }
+
 
   changeScene() {
     this.scene.start("Game");
@@ -180,7 +245,7 @@ export class Roulette extends Scene {
     }
 
     if(this.spriteStateCB != null){
-      this.spriteStateCB({ x: this.nagisa01.x, y: this.nagisa01.y, angle: this.nagisa01.angle })
+      this.spriteStateCB({ x: this.rouletteMainContainer.x, y: this.rouletteMainContainer.y, angle: this.rouletteMainContainer.angle })
     }
 
     // 出目の計算
@@ -191,7 +256,7 @@ export class Roulette extends Scene {
 
   // 出目の判定
   getRouletteHit(){
-    let rot = (this.nagisa01.angle + 180) + 90;
+    let rot = (this.rouletteMainContainer.angle + 180) + 90;
     if(rot >= 360){
       rot-=360
     }
@@ -219,7 +284,7 @@ export class Roulette extends Scene {
    * ROULETTE_STATE_START = 1;
   ******************************************/
   rouletteInit(){
-    this.nagisa01.rotation = 0;
+    this.rouletteMainContainer.rotation = 0;
     this.frameRotateBk = 0;
     this.finishRotateSpeed = 4;
 
@@ -231,7 +296,7 @@ export class Roulette extends Scene {
 
   // 外部から呼ばれる再初期化
   rouletteReInit(){
-    this.nagisa01.angle = 0
+    this.rouletteMainContainer.angle = 0
 
   }
 
@@ -242,8 +307,8 @@ export class Roulette extends Scene {
   rouletteRunUp(){
     let backRotOffcet = -(135 + this.rouletteInitBackRot ); // 　　最初に戻る角度
 
-    this.nagisa01.angle -= 2
-    if( this.nagisa01.angle < backRotOffcet){
+    this.rouletteMainContainer.angle -= 2
+    if( this.rouletteMainContainer.angle < backRotOffcet){
       this.rouletteState = this.ROULETTE_STATE_RUN_UP_DELAY;
       this.fct = 0;
     }
@@ -257,8 +322,8 @@ export class Roulette extends Scene {
   rouletteRunUpDelay() {
     if( this.fct === 0){
       this.rouletteTween = this.tweens.add({
-        targets: this.nagisa01,
-          angle: (this.nagisa01.angle-(30+this.randomRange(10))),
+        targets: this.rouletteMainContainer,
+          angle: (this.rouletteMainContainer.angle-(30+this.randomRange(10))),
           duration: 2000,
           repeat: 0,
           ease: PhaserMath.Easing.Cubic.Out,
@@ -269,14 +334,7 @@ export class Roulette extends Scene {
             this.constantRotateAddFrame = Math.floor(30 + this.randomRange(120))
       
       
-            const vo = [
-              'init_0',
-              'init_1',
-              'init_2',
-              'init_3',
-              'init_4',
-              'init_5',
-            ];
+            const vo = this.initVoice;
         
             if(this.voicePlayToggle){
               const idx = Math.round(Math.random() * vo.length) % vo.length
@@ -298,7 +356,7 @@ export class Roulette extends Scene {
    * ROULETTE_STATE_CONSTANT = 3; // 定速で回る
   ************************************************/
   rouletteConstant() {
-    this.nagisa01.angle +=  this.finishRotateSpeed * this.speedRatio
+    this.rouletteMainContainer.angle +=  this.finishRotateSpeed * this.speedRatio
 
     if(this.fct === (300 + this.constantRotateAddFrame) ){
       this.rouletteState = this.ROULETTE_STATE_DAMPING;
@@ -322,7 +380,7 @@ export class Roulette extends Scene {
   // ROULETTE_STATE_DAMPING  = 4; // 減衰
   rouletteDamping() {
     // 一旦 1000 ms で 360度とする
-    this.nagisa01.angle +=  this.finishRotateSpeed * this.speedRatio
+    this.rouletteMainContainer.angle +=  this.finishRotateSpeed * this.speedRatio
 
     // 高速の場合は早く減衰して、低速の場合はゆっくり減衰する
     // 閾値0.3
@@ -342,9 +400,9 @@ export class Roulette extends Scene {
 
   // ROULETTE_STATE_FINISH_INIT  = 50;  // 完了
   rouletteFinishInit() {
-    this.nagisa02k.setDepth(500).setVisible(true).setAlpha(0).setScale(1).setPosition(512,512)
+    this.finishSp.setDepth(500).setVisible(true).setAlpha(0).setScale(1).setPosition(512,512)
     this.showKissTween = this.tweens.chain({
-        targets: this.nagisa02k,
+        targets: this.finishSp,
         persist: true,
         tweens:[
           {
@@ -400,19 +458,12 @@ export class Roulette extends Scene {
   // 終了待機ループ
   rouletteFinish() {
 
-    const vo = [
-      'finish_0',
-      'finish_1',
-      'finish_2',
-      'finish_3',
-      'finish_4',
-      'finish_5',
-      'finish_6',
-    ];
+    const vo = this.finishVoice
+    const num = this.finishVoice.length
 
     if(this.voicePlayToggle){
       if(this.fct == 30){
-        const idx = Math.round(Math.random() * 7) % 7
+        const idx = Math.round(Math.random() * num) % num
         let sfx = this.sound.add(vo[idx],{
           volume:0.4
         });
@@ -456,7 +507,15 @@ export class Roulette extends Scene {
 
 
     // パイを生成
-    this.pieTitles.length = 0;
+    if(this.pieTitles.length != 0 ){
+        this.pieTitles.forEach((x)=>{
+          x.destroy()
+        }
+      )
+      this.pieTitles.length = 0
+    }
+
+
     items.forEach((x,i)=> {
       const color_idx =  i % colors.length 
       const item_max = items.length

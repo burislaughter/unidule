@@ -16,6 +16,7 @@ const VIDEO_ONE_URL = URL_BASE + "video";
 const AUTH_URL = URL_BASE + "auth";
 const VIDEO_FORCE_UPDATE = URL_BASE + "video_force_update";
 const CHAT_SEARCH_URL = URL_BASE + "chat_search";
+const SCHEDULE_TWEET = URL_BASE + "schedule_tweet";
 
 type loginCredentials = {
   userName: string;
@@ -37,6 +38,10 @@ function Admin() {
   const [dispMode, setDispMode] = useState("");
 
   const [tabSelect, setTabSelect] = useState("1");
+
+  const [tweetUrl, setTweetUrl] = useState("");
+  const [addTweetUrlResult,setAddTweetUrlResult] = useState((<Box>...</Box>));
+
 
   axios.defaults.headers.post["Content-Type"] = "application/json;charset=utf-8";
   axios.defaults.headers.post["Access-Control-Allow-Origin"] = "*";
@@ -257,6 +262,65 @@ function Admin() {
   }, [channelId]);
 
   /****************************************************************************************
+   * 配信予定の追加
+   ****************************************************************************************/
+  const addTweetUrl = useCallback(() => {
+    axios.defaults.headers.post["Content-Type"] = "application/json;charset=utf-8";
+    axios.defaults.headers.post["Access-Control-Allow-Origin"] = "*";
+
+    // URL
+    const body = {
+      tweetUrl: tweetUrl
+    };
+
+    const axiosInstance = axios.create({
+      withCredentials: false,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    axiosInstance
+      .post(SCHEDULE_TWEET, body)
+      .then((response) => {
+        console.log(response.data);
+        setAddTweetUrlResult(response.data)
+      })
+      .catch((error) => {
+        // エラーハンドリング
+        setAddTweetUrlResult((<Box>Error!.{error}</Box>))
+      });    
+
+  }, [tweetUrl]);    
+
+  /****************************************************************************************
+   * 配信予定の削除
+   ****************************************************************************************/
+  const deleteTweetUrl = useCallback(() => {
+    axios.defaults.headers.post["Content-Type"] = "application/json;charset=utf-8";
+    axios.defaults.headers.post["Access-Control-Allow-Origin"] = "*";
+
+    const axiosInstance = axios.create({
+      withCredentials: false,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "x-api-key": apiKey,
+      },
+    });
+
+    axiosInstance
+      .delete(SCHEDULE_TWEET, {
+        data: { tweetUrl: tweetUrl },
+      })
+      .then((response) => {
+        console.log("Delete OK");
+      })
+      .catch((error) => {
+        // エラーハンドリング
+      });
+  }, [tweetUrl]);    
+
+  /****************************************************************************************
    * タブ変更のハンドリング
    ****************************************************************************************/
   const onChangeTab = (event: React.SyntheticEvent, newValue: string) => {
@@ -267,8 +331,13 @@ function Admin() {
     } else if (newValue == "2") {
       // カテゴリー別ソート
       // categorySort();
+    } else if (newValue == "3") {
+      // 予定追加
     }
   };
+
+
+
 
   const channelInfo = Object.keys(channelParams)
     .filter((x) => channelParams[x].type == "member")
@@ -327,6 +396,7 @@ function Admin() {
               <TabList onChange={onChangeTab} aria-label="チャンネルフィルター">
                 <Tab label="スケジュール" value="1" />
                 <Tab label="チャット" value="2" />
+                <Tab label="予定追加" value="3" />
               </TabList>
             </Box>
             <TabPanelEx value="1">
@@ -370,6 +440,29 @@ function Admin() {
                 </Button>
               </Box>
             </TabPanelEx>
+
+            <TabPanelEx value="3">
+              <Box sx={{ marginLeft: "4px", marginBottom: "16px" }}>
+                <Typography sx={{ backgroundColor: "#FF0042", textAlign: "center", color: "#FFF" }}>予定追加</Typography>
+
+                <InputLabel>TweetURL</InputLabel>
+                <Input id="tweet-url" onChange={(event) => setTweetUrl(event.target.value)} sx={{width:"500px"}}/>
+
+                <Button variant="contained" onClick={addTweetUrl} sx={{ backgroundColor: "#FFE54C", color: "#000", marginLeft:"20px"}}>
+                  追加
+                </Button>
+                <Button variant="contained" onClick={deleteTweetUrl} sx={{ backgroundColor: "#FF4C4C", color: "#000", marginLeft:"20px"}}>
+                  削除
+                </Button>
+
+                <Box>
+                  {addTweetUrlResult}
+                </Box>
+              </Box>
+            </TabPanelEx>
+
+
+
           </TabContext>
           {dispMode == "VIDEO" && <Typography sx={{ whiteSpace: "pre-wrap", backgroundColor: "#F0F0F0", marginTop: "10px" }}>{resultVideoInfo}</Typography>}
           {dispMode == "CHAT" && chatList}

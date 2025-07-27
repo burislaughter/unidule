@@ -14,20 +14,20 @@ export const URL_RAW = "https://unidule.jp/raw/";
 
 export const channelParams: UniMen = {
   // EINS
-  nanase: { uid: "UCFfKS52xZaus6HunxP3Owsw", name: "神白 ななせ", twitter: "nanase_k7", order: 0, type: "member", birthday: "07/07", debut: "04/19" },
-  nagisa: { uid: "UCe5mbpYA9Yym4lZTdj06G6Q", name: "氷乃 渚", twitter: "hinonagi3", order: 1, type: "member", birthday: "12/21", debut: "04/19" },
-  maru: { uid: "UCmB1E78Kdgd9z6hN3ONRKow", name: "花ノ木 まる", twitter: "hananoki_maru", order: 2, type: "member", birthday: "01/25", debut: "04/19" },
-  ran: { uid: "UCVuVw2WDKIYCj9HABYVuREg", name: "黒花 蘭", twitter: "kurobanaran", order: 3, type: "member", birthday: "09/18", debut: "04/20" },
-  roman: { uid: "UCbdOhaCW0Ti1qVCb9PKvmxg", name: "群青 ロマン", twitter: "GunjoRoman", order: 4, type: "member", birthday: "04/07", debut: "04/20" },
-  ida: { uid: "UC7Ft50QAmUGWE6-ZfrHOG5Q", name: "扇名 いだ", twitter: "ouginaida", order: 5, type: "member", birthday: "11/15", debut: "04/20" },
+  nanase: { uid: "UCFfKS52xZaus6HunxP3Owsw", name: "神白 ななせ", twitter: "nanase_k7", order: 0, type: "member", birthday: "07/07", debut: "2024/04/19" },
+  nagisa: { uid: "UCe5mbpYA9Yym4lZTdj06G6Q", name: "氷乃 渚", twitter: "hinonagi3", order: 1, type: "member", birthday: "12/21", debut: "2024/04/19" },
+  maru: { uid: "UCmB1E78Kdgd9z6hN3ONRKow", name: "花ノ木 まる", twitter: "hananoki_maru", order: 2, type: "member", birthday: "01/25", debut: "2024/04/19" },
+  ran: { uid: "UCVuVw2WDKIYCj9HABYVuREg", name: "黒花 蘭", twitter: "kurobanaran", order: 3, type: "member", birthday: "09/18", debut: "2024/04/20" },
+  roman: { uid: "UCbdOhaCW0Ti1qVCb9PKvmxg", name: "群青 ロマン", twitter: "GunjoRoman", order: 4, type: "member", birthday: "04/07", debut: "2024/04/20" },
+  ida: { uid: "UC7Ft50QAmUGWE6-ZfrHOG5Q", name: "扇名 いだ", twitter: "ouginaida", order: 5, type: "member", birthday: "11/15", debut: "2024/04/20" },
 
   // ZWEI
-  rabi: { uid: "UCpPkVnKaAqg9_conr8qAZjA", name: "卯埜 らび", twitter: "UnoRabi", order: 6, type: "member", birthday: "03/03", debut: "11/29" },
-  souta: { uid: "UCAS1tKQTTPVw4-TFnKTzvnw", name: "水上 蒼太", twitter: "mizukami_souta", order: 7, type: "member", birthday: "07/26", debut: "11/29" },
-  jyui: { uid: "UC3Wxd3RwdF-3gwt-Bud0oEQ", name: "甘成 じゅい", twitter: "amanari_jyui", order: 8, type: "member", birthday: "10/01", debut: "11/29" },
-  asuto: { uid: "UC_lfOFwTCIvZsuaSvJQpNXg", name: "翠星 アスト", twitter: "asuto_515", order: 9, type: "member", birthday: "05/15", debut: "11/30" },
-  hoguno: { uid: "UCJWTT5HZQbrkP1NUBwwVEbQ", name: "望月 ほぐの", twitter: "Hoguno_M", order: 10, type: "member", birthday: "09/06", debut: "11/30" },
-  konn: { uid: "UCaSJgx9BZRktT0s19henMGg", name: "坂本 こん", twitter: "Sakamoto_kon", order: 11, type: "member", birthday: "01/31", debut: "11/30" },
+  rabi: { uid: "UCpPkVnKaAqg9_conr8qAZjA", name: "卯埜 らび", twitter: "UnoRabi", order: 6, type: "member", birthday: "03/03", debut: "2024/11/29" },
+  souta: { uid: "UCAS1tKQTTPVw4-TFnKTzvnw", name: "水上 蒼太", twitter: "mizukami_souta", order: 7, type: "member", birthday: "07/26", debut: "2024/11/29" },
+  jyui: { uid: "UC3Wxd3RwdF-3gwt-Bud0oEQ", name: "甘成 じゅい", twitter: "amanari_jyui", order: 8, type: "member", birthday: "10/01", debut: "2024/11/29" },
+  asuto: { uid: "UC_lfOFwTCIvZsuaSvJQpNXg", name: "翠星 アスト", twitter: "asuto_515", order: 9, type: "member", birthday: "05/15", debut: "2024/11/30" },
+  hoguno: { uid: "UCJWTT5HZQbrkP1NUBwwVEbQ", name: "望月 ほぐの", twitter: "Hoguno_M", order: 10, type: "member", birthday: "09/06", debut: "2024/11/30" },
+  konn: { uid: "UCaSJgx9BZRktT0s19henMGg", name: "坂本 こん", twitter: "Sakamoto_kon", order: 11, type: "member", birthday: "01/31", debut: "2024/11/30" },
 
   uniraid: { uid: "UCKofJjNEmQ3LwERp3pRVxtw", name: "ゆにれいど！", twitter: "Uniraid_VTuber", order: 12, type: "staff", birthday: "", debut: "" },
   uniraid_cut: { uid: "UCohnUVLcGInaC0l-2A95I5A", name: "公式 切り抜き", twitter: "", order: 13, type: "staff", birthday: "", debut: "" },
@@ -94,6 +94,7 @@ export const uniColors: UniColors = {
   hoguno: { bg_color: "rgb(75,90,169,0.2)", btn_color: "rgb(75,90,169)", btn_color_dark: GRAY },
   konn: { bg_color: "rgb(252,84,2,0.2)", btn_color: "rgb(252,84,2)", btn_color_dark: GRAY },
 };
+
 
 // カラーコードを取得
 export const getUniBgColor = (channel: string): string => {

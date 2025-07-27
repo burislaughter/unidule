@@ -13,6 +13,7 @@ import { ja } from "date-fns/locale";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import XIcon from "@mui/icons-material/X";
 import "./Summary.css";
+import dayjs from "dayjs";
 
 type SummaryProps = {
   channelInfo: any[]; // チャンネル情報
@@ -33,9 +34,16 @@ export const getBirthday = (channel: string, today: Date): Date | undefined => {
 
 export const getDebutDay = (channel: string, today: Date): Date => {
   const cid = channelParams[channel];
-  let mmdd = cid.debut;
+  const mmdd = dayjs(cid.debut).format('MM/DD')
   return getThisYearNextDay(mmdd, today);
 };
+
+export const getDebutYMDAdd = (channel: string, today: Date, value: number): Date => {
+  const cid = channelParams[channel];
+  const add_ymd = dayjs(cid.debut).add(value,'d')
+  return add_ymd.toDate()
+};
+
 
 // 次の記念日を取得
 export const getThisYearNextDay = (mmdd: string, today: Date): Date => {
@@ -81,12 +89,32 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
     const dd = getDebutDay(item.channel, today);
     const diffDayDD = differenceInDays(dd, today);
 
+    // デビュー日から経過日数
+    const dd_ymd = getDebutYMDAdd(item.channel, today,0);
+    const diffDayDDYMD = differenceInDays(today, dd_ymd);
+
+
+
     // テーブル1行
     rows[idx] = (
       <TableRow key={item.channel} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
         <TableCell component="th" scope="row">
           <ChannelIconComp key={idx} channel={item.channel} cb={() => {}} imgUrl={item.snippet.thumbnails.default.url} fullName={""} isSelected={true}></ChannelIconComp>
         </TableCell>
+        {/* Youtubeリンク */}
+        <TableCell align="right">
+          <Link target="_brank" href={"https://www.youtube.com/channel/" + channelParams[item.channel].uid} color={"#F00"}>
+            <YouTubeIcon sx={{ fontSize: "30px", height: "24px", margin: 0 }} />
+          </Link>
+        </TableCell>
+
+        {/* Xリンク */}
+        <TableCell align="center">
+          <Link target="_brank" href={"https://x.com/" + channelParams[item.channel].twitter} color={"#000"}>
+            <XIcon sx={{ fontSize: "30px", height: "24px", margin: 0 }} />
+          </Link>
+        </TableCell>
+
         {/* 誕生日日まで */}
         <TableCell align="right">
           {diffDayBD == 0 && (
@@ -111,19 +139,21 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
           <Typography variant="caption">({format(dd, "M月d日")})</Typography>
         </TableCell>
 
-        {/* Youtubeリンク */}
+        {/* デビュー日から */}
         <TableCell align="right">
-          <Link target="_brank" href={"https://www.youtube.com/channel/" + channelParams[item.channel].uid} color={"#F00"}>
-            <YouTubeIcon sx={{ fontSize: "30px", height: "24px", margin: 0 }} />
-          </Link>
+          {diffDayDDYMD == 0 && (
+            <Typography variant="h6" className="gradation">
+              TODAY
+            </Typography>
+          )}
+          {diffDayDDYMD != 0 && <Typography variant="h6">{diffDayDDYMD}日</Typography>}
+
+          <Typography variant="caption">({format(dd_ymd, "yyyy年M月d日")})</Typography>
         </TableCell>
 
-        {/* Xリンク */}
-        <TableCell align="center">
-          <Link target="_brank" href={"https://x.com/" + channelParams[item.channel].twitter} color={"#000"}>
-            <XIcon sx={{ fontSize: "30px", height: "24px", margin: 0 }} />
-          </Link>
-        </TableCell>
+
+
+
       </TableRow>
     );
   }
@@ -135,12 +165,6 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
           <TableHead>
             <TableRow>
               <TableCellEx align="center" width={"100px"}></TableCellEx>
-              <TableCellEx align="center" width={"120px"}>
-                誕生日まで
-              </TableCellEx>
-              <TableCellEx align="right" width={"140px"}>
-                デビュー日まで
-              </TableCellEx>
               <TableCellEx align="right" width={"80px"}>
                 Youtube
               </TableCellEx>
@@ -148,6 +172,15 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
                 X
               </TableCellEx>
 
+              <TableCellEx align="center" width={"120px"}>
+                誕生日まで
+              </TableCellEx>
+              <TableCellEx align="right" width={"140px"}>
+                デビュー日まで
+              </TableCellEx>
+              <TableCellEx align="right" width={"140px"}>
+                活動開始から
+              </TableCellEx>
               <TableCellEx align="right"></TableCellEx>
             </TableRow>
           </TableHead>

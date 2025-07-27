@@ -6,16 +6,30 @@ import Phaser from "phaser";
 import "./Roulette.css";
 import { PhaserGame } from "./game/PhaserGame";
 import BreadcrumbsEx from "../../breadcrumbs";
+import { getUniBtnColor, uniColors } from "../../const";
 
 function Roulette() {
-  // The sprite can only be moved in the Roulette Scene
+  // ルーレットの進行管理
   const [rouletteRotate, setRouletteRotate] = useState(0);
 
-  //  References to the PhaserGame component (game and scene are exposed)
+  // PhaserGame コンポーネントへの参照 (ゲームとシーンが公開されます)
   const phaserRef = useRef();
   const [spritePosition, setSpritePosition] = useState({ x: 0, y: 0, angle:0 });
 
-  const [rouletteItems, setRouletteItems] = useState("氷乃渚\n渚さん\nなぎぷぅ\nなぎてぃゃ\nなぎにゃん\nなぎぴょん");
+  type UniMen = Record<
+    string,
+    {
+      name: string;
+    }
+  >;
+
+  const unimen:UniMen ={
+    nagisa: { name:"氷乃渚" }, 
+    unorabi: { name:"卯埜らび" }, 
+  }
+
+  const initItems = "氷乃渚\n渚さん\nなぎぷぅ\nなぎてぃゃ\nなぎにゃん\nなぎぴょん"
+  const [rouletteItems, setRouletteItems] = useState(initItems);
   const [rouletteResultList, setRouletteResultList] = useState("");
 
   const [rouletteHit, setRouletteHit] = useState("");
@@ -28,12 +42,21 @@ function Roulette() {
 
   // ルーレット倍率
   const [magnification,setMagnification] = useState("1");
-  
-  
   const handleSelectMagnification = (event: SelectChangeEvent) => {
     setMagnification(event.target.value);
   };
 
+  // 回る人
+  const [selectMain, setSelectMain] = useState("nagisa");
+  const handleSelectselectMain = (event: SelectChangeEvent) => {
+    const u = event.target.value
+    setSelectMain(u);
+
+    const scene = (phaserRef.current as any).scene
+    if(scene){
+      scene.updateContainer(u)
+    }
+  };
 
   // ルーレット開始ボタンコールバック
   const rotateStartPushCb = () => {
@@ -98,6 +121,21 @@ function Roulette() {
     scene.rouletteSet(items, Number(magnification) , rouletteResultUpdate);
   }
 
+  // ルーレットリセット
+  const handlerReset = ()=>{
+    setSelectMain('nagisa');
+
+    setRouletteItems(initItems)
+    setRouletteResultList('')
+    setRouletteRotate(0)
+    setMagnification('1')
+
+    const scene = (phaserRef.current as any).scene
+    if(scene){
+      scene.updateContainer('nagisa')
+    }
+  }
+
   // ルーレットの項目更新時
   useEffect(()=> {
     if(phaserRef.current != undefined && rouletteItems){
@@ -130,12 +168,12 @@ function Roulette() {
 
   },[spritePosition.angle])
 
-
+  
 
   return (
     <Box id="app" sx={{marginTop:"50px",marginLeft:"10px"}}>
       <Typography
-        className="outline-roulette"
+        className={'outline-roulette-' + selectMain}
         component="span"
         
         sx={{
@@ -148,7 +186,7 @@ function Roulette() {
           width: "100%",
         }}
       >
-        回レ！氷乃渚！
+        回レ！{unimen[selectMain].name }！
       </Typography>
 
       <BreadcrumbsEx
@@ -210,31 +248,60 @@ function Roulette() {
 
               } label="音声" />
             </FormGroup>
+
+            <Box sx={{marginLeft:"4px",     display: 'flex',alignItems: 'center',    justifyContent: 'center'}}>
+              <Button variant="contained"  onClick={handlerReset} sx={{backgroundColor:"#FF5E60",display: 'table-cell',  verticalAlign: 'middle'}}>
+                リセット
+              </Button>
+            </Box>            
           </Stack>
-          <Box sx={{marginLeft:"4px"}}>
-            <FormControl sx={{ m: 1, minWidth: 120 }} size="small">
-              <InputLabel id="select-magnification-label">ルーレット倍率</InputLabel>
-              <Select
-                labelId="select-magnification-label"
-                id="select-magnification"
-                value={magnification}
-                label="Age"
-                onChange={handleSelectMagnification}
-                disabled={rouletteRotate != 0}
-              >
-                <MenuItem value={1}>x1</MenuItem>
-                <MenuItem value={2}>x2</MenuItem>
-                <MenuItem value={3}>x3</MenuItem>
-                <MenuItem value={4}>x4</MenuItem>
-                <MenuItem value={5}>x5</MenuItem>
-                <MenuItem value={6}>x6</MenuItem>
-                <MenuItem value={7}>x7</MenuItem>
-                <MenuItem value={8}>x8</MenuItem>
-                <MenuItem value={9}>x9</MenuItem>
-                <MenuItem value={10}>x10</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
+
+          <Stack direction="row" sx={{marginTop:"10px" }}>
+            <Box sx={{marginLeft:"4px"}}>
+              <FormControl sx={{ m: 1, minWidth: 120 }} size="small">
+                <InputLabel id="select-main-label">回る人</InputLabel>
+                <Select
+                  labelId="select-main-label"
+                  id="select-main"
+                  value={selectMain}
+                  label=""
+                  onChange={handleSelectselectMain}
+                  disabled={rouletteRotate != 0}
+                >
+                  <MenuItem value={'nagisa'}>氷乃渚(𝙠𝙞𝙨𝙨...)</MenuItem>
+                  <MenuItem value={'unorabi'}>卯埜らび</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+            <Box sx={{marginLeft:"4px"}}>
+              <FormControl sx={{ m: 1, minWidth: 120 }} size="small">
+                <InputLabel id="select-magnification-label">ルーレット倍率</InputLabel>
+                <Select
+                  labelId="select-magnification-label"
+                  id="select-magnification"
+                  value={magnification}
+                  label=""
+                  onChange={handleSelectMagnification}
+                  disabled={rouletteRotate != 0}
+                >
+                  <MenuItem value={1}>x1</MenuItem>
+                  <MenuItem value={2}>x2</MenuItem>
+                  <MenuItem value={3}>x3</MenuItem>
+                  <MenuItem value={4}>x4</MenuItem>
+                  <MenuItem value={5}>x5</MenuItem>
+                  <MenuItem value={6}>x6</MenuItem>
+                  <MenuItem value={7}>x7</MenuItem>
+                  <MenuItem value={8}>x8</MenuItem>
+                  <MenuItem value={9}>x9</MenuItem>
+                  <MenuItem value={10}>x10</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+
+            
+          </Stack>
+
           
 
           <TextField

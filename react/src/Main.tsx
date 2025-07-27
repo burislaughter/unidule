@@ -17,8 +17,19 @@ import { ReadMe } from "./ReadMe";
 import { useNavigate } from "react-router-dom";
 import { HeaderBox, TabPanelEx } from "./styled";
 import LinkPage from "./LinkPage";
+import { DateComponents } from "./DateComponents";
+import { PickerValue } from "@mui/x-date-pickers/internals";
+import dayjs from "dayjs";
+import ja from 'dayjs/locale/ja';
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.locale(ja);
+dayjs.extend(utc)
+dayjs.extend(timezone)
+dayjs.tz.setDefault("Asia/Tokyo");
 
-const buildDate = "2025.02.22";
+
+const buildDate = "2025.06.13";
 
 export const getChannelInfo = (cis: any[], item: any): any => {
   const cid = channelParams[item.channel];
@@ -50,6 +61,8 @@ export const getChannelFromTwitterID = (tw: string): string => {
 };
 
 const VIDEO_LIST_URL = URL_BASE + "video_list?channel=all";
+const VIDEO_LIST_BETWEEN_URL = URL_BASE + "video_list_between";
+
 const CHANNEL_INFO_URL = URL_BASE + "channel_info";
 const SCHEDULE_TWEET = URL_BASE + "schedule_tweet";
 const SYSTEM_STATUS = URL_BASE + "system";
@@ -91,8 +104,11 @@ function Main() {
   scheduleTweetListRef.current = scheduleTweetListMaster;
 
   const [sortSelect, setSortSelect] = useState<Set<string>>(new Set([]));
+  const [startAt, setStartAt] = useState<string|undefined>("");
+  const [endAt, setEndAt] = useState<string|undefined>("");
+  const [changeStartAt, setChangeStartAt] = useState<PickerValue>();
 
-  const createSukedule = (ci_list: any, v_list: any[]) => {
+  const createSukedule = (now:Date, ci_list: any, v_list: any[]) => {
     const archiveListMaster: React.SetStateAction<any[]> = [];
     const futureListMaster: React.SetStateAction<any[]> = [];
     const seasonsTodayList: React.SetStateAction<any[]> = [];
@@ -108,7 +124,7 @@ function Main() {
       // 開始時刻が有効な場合
       if (obj.startAt) {
         // 本日の配信か、もっと未来の配信予定か、アーカイブor動画か
-        const now = new Date();
+        // const now = new Date();
         // 日付変更を跨いでいた場合は昨日からカウント
         // 3:59 まで
         const ofsDay = now.getHours() < 4 ? -1 : 0;
@@ -151,7 +167,8 @@ function Main() {
         const ci = getChannelInfo(ci_list, obj);
 
         const card = (
-          <Grid item sm={4} md={3} lg={2} key={index + "-" + obj.channel}>
+          <Grid container size={{sm:4, md:3, lg:2 }}
+            key={index + "-" + obj.channel}>
             <MediaCard
               imgUrl={obj.snippet.thumbnails.maxres?.url ? obj.snippet.thumbnails.maxres?.url : obj.snippet.thumbnails.medium?.url}
               videoId={obj.id}
@@ -242,18 +259,47 @@ function Main() {
     const promise1 = axiosInstance.get(CHANNEL_INFO_URL, {
       signal: controller.signal,
     });
-    const promise2 = axiosInstance.get(VIDEO_LIST_URL, {
-      signal: controller.signal,
-    });
-    const promise3 = axiosInstance.get(SCHEDULE_TWEET, {
-      signal: controller.signal,
-    });
+    
+    const promise2 = (startAt == "" && endAt == "") ?
+      axiosInstance.get(VIDEO_LIST_URL, {
+        signal: controller.signal,
+      })
+      :
+      axiosInstance.get(VIDEO_LIST_BETWEEN_URL, {
+        signal: controller.signal,
+        params:{
+          channel:"all",
+          start_at:startAt+"Z",
+          end_at:endAt+"Z"
+        }
+      })
+
+    const promise3 = (endAt == "" ) ?
+      axiosInstance.get(SCHEDULE_TWEET, {
+        signal: controller.signal,
+      })
+      :
+      axiosInstance.get(SCHEDULE_TWEET, {
+        signal: controller.signal,
+        params:{
+          target_at:endAt+"Z"
+        }
+      })
+
     const promise4 = axiosInstance.get(SYSTEM_STATUS, {
       signal: controller.signal,
     });
-    const promise5 = axiosInstance.get(INFORMATION, {
-      signal: controller.signal,
-    });
+    const promise5 = (endAt == "" ) ?
+      axiosInstance.get(INFORMATION, {
+        signal: controller.signal
+      })
+      :
+      axiosInstance.get(INFORMATION, {
+        signal: controller.signal,
+        params:{
+          target_at:endAt+"Z"
+        }
+      });
 
     Promise.all([promise1, promise2, promise3, promise4, promise5]).then(function (values) {
       const { data: ci_data, status: ci_status } = values[0];
@@ -270,13 +316,20 @@ function Main() {
         if (item.startAt.indexOf("未定") == 0) {
           return true;
         }
+
+        // 過去分表示の場合は全てパス
+        if(startAt != "" && endAt != ""){
+          return true;
+        }
+
         const t1 = new Date(item.startAt);
         const t2 = subDays(new Date(), 7);
         return t1 > t2;
       });
 
       // 取得した動画一覧をリストに格納
-      const { archiveListMaster, futureListMaster, todayListMaster } = createSukedule(ci_data, tmp_v_date);
+      const now = (endAt)? dayjs(endAt).toDate() : new Date();
+      const { archiveListMaster, futureListMaster, todayListMaster } = createSukedule(now, ci_data, tmp_v_date);
 
       // 件数を減らす
       // 直近一週間分
@@ -303,7 +356,7 @@ function Main() {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [startAt,endAt]);
 
   // タブのコールバック
   const onChangeTab = (event: React.SyntheticEvent, newValue: string) => {
@@ -315,6 +368,24 @@ function Main() {
     const names = ["神白ななせさん", "GOD神白", "神ちゃん"];
     return names[r];
   };
+
+  // 過去分取得の開始日時
+  const handlePastStart = (newValue:PickerValue)=> {
+    setChangeStartAt(newValue)
+  }
+  
+
+  const handlePast = ()=> {
+    if(changeStartAt == undefined || changeStartAt == null)
+      return;
+
+    const utc_date = changeStartAt.add(1,'d').add(4,'h').tz('utc')
+    
+    setEndAt(utc_date.format("YYYY-MM-DDTHH:mm:ss"))
+    setStartAt(utc_date.add(-7,'d').format("YYYY-MM-DDTHH:mm:ss"))
+  }
+
+  
 
   return (
     <Box sx={{ background: "linear-gradient(135deg, #FFF6F3,#E7FDFF)", paddingTop: "64px" }}>
@@ -353,7 +424,7 @@ function Main() {
                       textDecoration: "underline",
                     }}
                   />
-                  <Tab
+                  {/* <Tab
                     label="Roulette"
                     value="3"
                     onClick={() => {
@@ -363,7 +434,7 @@ function Main() {
                       color: "#0371D6",
                       textDecoration: "underline",
                     }}
-                  />
+                  /> */}
 
                   <Tab label="SUMMARY" value="4" />
                   <Tab label="LINKS" value="5" />
@@ -392,7 +463,20 @@ function Main() {
               <Divider></Divider>
             </Box>
 
-            <HeaderBox sx={{ backgroundColor: "#00C070 !important" }}>本日の配信 ～04:00まで (メン限対応しました)</HeaderBox>
+            {/* 過去分取得 */}
+            {/* startAt,endAt */}
+            <Box my={1} sx={{ display: 'flex' }}>
+              <Box sx={{ml:2}}>
+                <DateComponents label="この日の状態" onChange={handlePastStart}></DateComponents>
+              </Box>
+              <Button  variant="contained" color="info" sx={{ml:2}} onClick={handlePast}>過去を見る</Button>
+            </Box>
+
+            <Box my={1}>
+              <Divider></Divider>
+            </Box>
+
+            <HeaderBox sx={{ backgroundColor: "#00C070 !important" }}>本日の配信 ～04:00まで</HeaderBox>
             {/* 本日の配信、動画リスト */}
             {videoTodayList.length != 0 && (
               <Box sx={{ flexGrow: 1, width: "100%", margin: "0px auto", minHeight: "40px" }}>
@@ -405,8 +489,8 @@ function Main() {
               <Box sx={{ minHeight: "140px" }}>
                 <Box py={1} px={2}>
                   <Typography sx={{ fontSize: "0.75rem" }}>そこ(Youtube)に無ければ(ゆにじゅ～るには)無いですね</Typography>
-                  <Typography sx={{ fontSize: "0.75rem" }}>{GodName()}の朝活を見たら、誰かの予定がわかるかも？</Typography>
-                  <Typography sx={{ fontSize: "0.75rem" }}>もしくは各自のX(旧Twitter)にはあるかもしれません</Typography>
+                  <Typography sx={{ fontSize: "0.75rem" }}>各自のXにはあるかもしれません</Typography>
+                  <Typography sx={{ fontSize: "0.75rem" }}>なお外部コラボは手動で追加しています</Typography>
                 </Box>
               </Box>
             )}
@@ -420,7 +504,9 @@ function Main() {
                   for (let i = 0; i < informations.length; i++) {
                     const info = informations[i];
                     list.push(
-                      <Grid item key={i} sm={6} md={4} lg={3}>
+                      <Grid key={i} 
+                         container size={{sm:6, md:4, lg:3 }}
+                      >
                         <InformationCard key={i} title={info.title} detail={info.detail} imgUrl={info.image} url={info.url} startDateTime={info.startAt} endDateTime={info.endAt}></InformationCard>
                       </Grid>
                     );
@@ -447,7 +533,7 @@ function Main() {
                       const spl = item.LinkToTweet.split("/status/");
                       const id = spl[1];
                       ret.push(
-                        <Grid item key={id} sm={6} md={4} lg={3}>
+                        <Grid key={id} size={{sm:6, md:4, lg:3 }}>
                           <Tweet tweetId={id} options={{ lang: "Ja", width: "auto" }} />
                         </Grid>
                       );

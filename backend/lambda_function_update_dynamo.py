@@ -192,8 +192,10 @@ def importVideoListDocument(v_list, table, channel_owner, is_force=False):
                 item['isMemberOnly'] = (item["status"]["privacyStatus"] == "public") and (not "viewCount" in item["statistics"])
 
                 # 限定公開は追加しない
+                # ただし途中で限定公開になったことを考慮し、endAtがある場合は更新する
                 if item["status"]["privacyStatus"] == "unlisted" and is_force == False:
-                    continue
+                    if (not 'statistics' in item) or int(item['statistics']['likeCount']) < 10:
+                        continue
 
                 # 配信予定のない枠だけを取得した場合
                 if startAt:
@@ -477,7 +479,7 @@ def lambda_handler(event, context):
         is_force = event['force'] if 'force' in event else ""
         
         for (own , c_id, p_id, mem ) in channelParams:
-            if not own == 'uniraid' and not own == 'uniraid_cut' and not own == 'other':
+            if not own == 'uniraid' and not own == 'uniraid_cut':
                 # Youtubeから動画情報の取得
                 v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'],os.environ['DYNAMO_DB_IDS_TABLE'], own, is_force)
 

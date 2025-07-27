@@ -3,7 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Main from "./Main";
 import Admin from "./admin/Admin";
 import VoiceButton from "./special/voiceButton/VoiceButton";
-import Roulette from "./special/roulette/Roulette";
+// import Roulette from "./special/roulette/Roulette";
 
 import Box from "@mui/material/Box";
 import MyPage from "./myPage/MyPage";
@@ -34,7 +34,7 @@ function App() {
               <Route path="/admin" element={<Admin />} />
               <Route path="sp">
                 <Route path="voice_button" element={<VoiceButton />} />
-                <Route path="roulette" element={<Roulette />} />
+                {/* <Route path="roulette" element={<Roulette />} /> */}
               </Route>
             </Routes>
           </BrowserRouter>
