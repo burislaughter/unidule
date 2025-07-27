@@ -17,11 +17,14 @@
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
+  box-orient: vertical;
   -webkit-line-clamp: 1; /* 一行以上は省略 */
+  line-clamp: 1; /* 一行以上は省略 */
   margin-left: 8px !important;
   margin-right: 8px !important;
   color: #000000;
   font-size: 0.8rem !important;
+  word-break:break-all;
 }
 
 .Card-parent {

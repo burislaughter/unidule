@@ -2,6 +2,8 @@ from decimal import Decimal
 
 PATH_PARAMETER_CHANNEL_INFO = '/channel_info'
 PATH_PARAMETER_VIDEO_LIST = '/video_list'
+PATH_PARAMETER_VIDEO_LIST_BETWEEN = '/video_list_between'
+
 PATH_PARAMETER_VIDEO = '/video'
 PATH_PARAMETER_VIDEO_FORCE_UPDATE = '/video_force_update'
 PATH_PARAMETER_AUTH = '/auth'
@@ -16,6 +18,7 @@ PATH_PARAMETER_WAV_TO_MP3 = '/wav_to_mp3'
 PATH_PARAMETER_GET_CHAT = '/chat'
 PATH_PARAMETER_SEARCH_CHAT = '/chat_search'
 PATH_PARAMETER_VOICE_TIMELINE = '/voice_timeline'
+PATH_PARAMETER_GET_CHAT_MESSAGE = '/chat_message'
 
 # チャンネル情報の定数
 # チャンネルオーナー、チャンネルID、新着動画プレイリストID
