@@ -29,7 +29,7 @@ dayjs.extend(timezone)
 dayjs.tz.setDefault("Asia/Tokyo");
 
 
-const buildDate = "2025.06.13";
+const buildDate = "2025.12.10";
 
 export const getChannelInfo = (cis: any[], item: any): any => {
   const cid = channelParams[item.channel];
@@ -384,8 +384,7 @@ function Main() {
     setEndAt(utc_date.format("YYYY-MM-DDTHH:mm:ss"))
     setStartAt(utc_date.add(-7,'d').format("YYYY-MM-DDTHH:mm:ss"))
   }
-
-  
+ 
 
   return (
     <Box sx={{ background: "linear-gradient(135deg, #FFF6F3,#E7FDFF)", paddingTop: "64px" }}>
@@ -563,7 +562,7 @@ function Main() {
           </>
         )}
 
-        {systemStatus == "close" && (
+        {systemStatus != ""  &&  systemStatus != "online" && (
           <Box
             sx={{
               marginTop: "60px",

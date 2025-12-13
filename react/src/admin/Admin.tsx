@@ -202,8 +202,13 @@ function Admin() {
             const v = video[0];
             // 動画情報があるなら
             const itemElm = [];
-            const start = v["liveStreamingDetails"]["actualStartTime"];
-            // v["startAt"];
+            let start = v["liveStreamingDetails"]["actualStartTime"];
+
+            // UTCの T が含まれる
+            if(start.indexOf("T") != -1){
+              start = start.replace("T"," ").replace("Z","")
+            }
+
             const startDt = new Date(start);
 
             for (let item in items) {

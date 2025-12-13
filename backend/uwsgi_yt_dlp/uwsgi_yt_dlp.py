@@ -115,7 +115,8 @@ def application(env, start_response):
                 '-ar', '44100',
                 '-ac', '2'
             ],
-            'prefer_ffmpeg': True
+            'prefer_ffmpeg': True,
+            'js_runtimes': {'deno'}
         }
 
         # /opt/bin/ffmpeg

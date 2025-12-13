@@ -12,7 +12,7 @@ from util import owner_to_cid, owner_to_member_only, owner_to_pid, channelParams
 import youtubeAPI
 from googleapiclient.discovery import build
 import pandas as pd
-
+from datetime import datetime
 print('Loading function')
 dynamodb = boto3.resource('dynamodb')
 
@@ -53,7 +53,7 @@ def getStartAt(item):
 # force ... 処理済の重複チェックをせず全IDを取得
 #################################################################################################
 def getVideoListFromYT(devKey, table, channel_owner,is_force, is_once=True):
-    print('getVideoListFromYT start')
+    print('getVideoListFromYT start [' + channel_owner + "]")
     p_list_id = owner_to_pid(channel_owner)
     
     # チャンネルが見つからない場合
@@ -69,17 +69,17 @@ def getVideoListFromYT(devKey, table, channel_owner,is_force, is_once=True):
     # メン限
     p_list_mem = owner_to_member_only(channel_owner)
     # チャンネルの新着動画ID一覧の取得
-    v_id_list_mem = youtubeAPI.get_video_id_in_playlist(p_list_mem, youtube, is_once)
+    if p_list_mem != '':
+        # メン限の動画IDをマージ
+        v_id_list_mem = youtubeAPI.get_video_id_in_playlist(p_list_mem, youtube, is_once)
 
-    # メン限の動画IDをマージ
-    if v_id_list_mem:
-        v_id_list = v_id_list + v_id_list_mem
+        if v_id_list_mem:
+            v_id_list = v_id_list + v_id_list_mem
 
     # 全てを対象とする場合
     if is_force:
         # 動画詳細を取得
         return  youtubeAPI.get_video_items(v_id_list, youtube )
-
 
     ids = getVideoIdsDocument(table)
 
@@ -112,7 +112,7 @@ def getVideoListFromYT(devKey, table, channel_owner,is_force, is_once=True):
         
 
     # 更新漏れがあるので、保険で配信中の物を書き込む
-    tmp = youtubeAPI.get_video_items(v_id_list[0:10], youtube )
+    tmp = youtubeAPI.get_video_items(v_id_list[0:20], youtube )
     append = liveStatusVIdeos(tmp)
 
 
@@ -156,16 +156,24 @@ def getChannelInfoFromYT(devKey, channel_owner):
 # channel_owner ... チャンネル所有者名
 #################################################################################################
 def importVideoListDocument(v_list, table, channel_owner, is_force=False):
-    print('importVideoListDocument start')
+    print('importVideoListDocument start: ' + channel_owner)
 
     # 重複していた場合に削除
     v_list = pd.DataFrame({'id':v_list}).drop_duplicates()['id'].values.tolist()
+
+
+    ids = []
+    for  row in v_list:
+        ids.append(row['id'])
+
+    print('v_list: ' + ", ".join(ids))
 
     # dynamoDBで検索する用の情報を付随する
     table = dynamodb.Table(table)
     try:
         with table.batch_writer() as batch:
             for item in v_list:
+                print("import: " + item['id'])
                 # DynamoDB用のフィールドを追加
                 # channel
                 item['dummy'] = 'dummy'  # ダミーパーティションキー
@@ -337,6 +345,37 @@ def liveStatusVIdeos(v_list):
     return lists
     
 
+################################################################################################
+# YoutubeのAPIキーを12時間事に切り替える
+#################################################################################################
+def getYtKey():
+    dt = datetime.now()
+
+    keys = [
+        os.environ['YOUTUBE_API_KEY_1'],
+        os.environ['YOUTUBE_API_KEY_2'],
+        os.environ['YOUTUBE_API_KEY_3']
+    ]
+
+    idx = getTimeArea(dt.hour)
+    return keys[idx]
+
+
+def getTimeArea(hour):
+    t = [
+        [17, 18, 19, 20, 21, 22, 23],
+        [ 0,  1,  2,  3,  4,  5,  6, 7, 8, 9],
+        [10, 11, 12, 13, 14, 15, 16]
+    ]
+
+    for i,v in enumerate(t):
+        if hour in v:
+            return i
+        
+    return 0
+
+
+
 
     
 def check_delete_video():
@@ -349,7 +388,7 @@ def check_delete_video():
 
     # Youtubeに動画DIを問い合わせ
     # youtube クライアントの作成
-    youtube = build("youtube", "v3", developerKey = os.environ['YOUTUBE_API_KEY'])
+    youtube = build("youtube", "v3", developerKey = getYtKey())
     youtbe_videos = youtubeAPI.get_video_ids(v_ids, youtube )
     y_ids = get_ids(youtbe_videos)
 
@@ -385,7 +424,18 @@ def lambda_handler(event, context):
     # GET_VIDEO_LIST ... DynamoDBから取得
     exec_mode = event['exec_mode']
 
-    if exec_mode == 'UPDATE_VIDEO_LIST':
+    if exec_mode == 'KEEP_ALIVE':
+        return {
+            'statusCode': 200,
+            'headers': {
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Origin": '*',
+                "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+            },
+            'body': "OK"
+        }
+
+    elif exec_mode == 'UPDATE_VIDEO_LIST':
         # maru ... 花ノ木まる
         channel_owner = event['channel']
 
@@ -393,7 +443,7 @@ def lambda_handler(event, context):
         is_once = event['once'] if 'once' in event else True
 
         # Youtubeから動画情報の取得
-        v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'],os.environ['DYNAMO_DB_IDS_TABLE'], channel_owner, is_force, is_once)
+        v_list = getVideoListFromYT(getYtKey(), os.environ['DYNAMO_DB_IDS_TABLE'], channel_owner, is_force, is_once)
 
         if len(v_list) != 0:
             # 動画情報をDynamoDBに入れる
@@ -415,7 +465,7 @@ def lambda_handler(event, context):
     elif exec_mode == 'UPDATE_CHANNEL_INFO':  
         channel_owner = event['channel']
         # ユニークIDで検索したときも配列で帰って来る
-        channel_info = getChannelInfoFromYT(os.environ['YOUTUBE_API_KEY'], channel_owner)
+        channel_info = getChannelInfoFromYT(getYtKey(), channel_owner)
         table = os.environ['DYNAMO_DB_CHANNEL_INFO_TABLE']
         # チャンネル情報の更新
         # 配列で渡す
@@ -481,7 +531,7 @@ def lambda_handler(event, context):
         for (own , c_id, p_id, mem ) in channelParams:
             if not own == 'uniraid' and not own == 'uniraid_cut':
                 # Youtubeから動画情報の取得
-                v_list = getVideoListFromYT(os.environ['YOUTUBE_API_KEY'],os.environ['DYNAMO_DB_IDS_TABLE'], own, is_force)
+                v_list = getVideoListFromYT(getYtKey(), os.environ['DYNAMO_DB_IDS_TABLE'], own, is_force)
 
                 if len(v_list) != 0:
                     # 動画情報をDynamoDBに入れる

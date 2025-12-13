@@ -1,6 +1,6 @@
 import { Box, FormControl, InputLabel, Input, FormHelperText, Button, Typography, TextField, Select, MenuItem, Backdrop, CircularProgress, IconButton, Snackbar, Alert } from "@mui/material";
 import useSound from "use-sound";
-import { getUniBgColor, getUniBtnColor, getUniDarkColor, URL_BASE, URL_RES } from "../../const";
+import { getUniBgColor, getUniBtnColor, getUniBtnTxtColor, getUniDarkColor, URL_BASE, URL_RES } from "../../const";
 import "./VoiceButtonOne.css";
 import { Cancel as CloseIcon } from "@mui/icons-material";
 import { StopCircle as StopCircleIcon } from "@mui/icons-material";
@@ -11,7 +11,7 @@ import axios from "axios";
 import { AxiosRequestConfig } from "axios";
 
 import { FaGhost } from "react-icons/fa";
-import { GiRose } from "react-icons/gi";
+import { GiRose, GiSandsOfTime, GiTRexSkull } from "react-icons/gi";
 import { FaRegSnowflake } from "react-icons/fa";
 import { LuFlower } from "react-icons/lu";
 import { IoDiamondOutline } from "react-icons/io5";
@@ -25,6 +25,9 @@ import { GiTigerHead } from "react-icons/gi";
 import { FaGuitar } from "react-icons/fa";
 import { CiMedicalCross } from "react-icons/ci";
 import { GiFoxTail } from "react-icons/gi";
+import { FaGun, FaSkull } from "react-icons/fa6";
+import { AiFillThunderbolt } from "react-icons/ai";
+import { MdOutlineSmokingRooms } from "react-icons/md";
 
 const FormData = require("form-data");
 export type VoiceButtonOneProps = {
@@ -73,6 +76,21 @@ const getIcons = (channel: string) => {
       return <CiMedicalCross color="#FFF" className="icon-shadow-b" />;
     case "konn":
       return <GiFoxTail color="#FFF" className="icon-shadow-b" />;
+
+
+    case "compsaurus":
+      return <GiTRexSkull color="#FFF" className="icon-shadow-b" />;
+    case "renma":
+      return <FaGun color="#FFF" className="icon-shadow-b" />;
+    case "shiu":
+      return <GiSandsOfTime color="#FFF" className="icon-shadow-b" />;
+    case "raichi":
+      return <AiFillThunderbolt color="#FFF" className="icon-shadow-b" />;
+    case "lunathia":
+      return <MdOutlineSmokingRooms color="#DDD" className="icon-shadow-b" />;
+    case "granite":
+      return <FaSkull  color="#FFF" className="icon-shadow-b" />;
+
   }
 };
 
@@ -108,6 +126,7 @@ export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoa
   const btnColor = hasSound ? (isDenoise ? getUniBtnColor(channel) : chroma(getUniBtnColor(channel)).desaturate(0.7).brighten(0.6).css()) : getUniDarkColor(channel);
 
   const btnDelColor = chroma(getUniBtnColor(channel)).darken(1.8).css();
+  const btnTextColor = chroma(getUniBtnTxtColor(channel)).css();
 
   const uidRef = useRef("");
   uidRef.current = uid;
@@ -285,7 +304,7 @@ export const VoiceButtonOne = ({ filename, title, channel, isDenoise, uid, reLoa
         sx={{
           textTransform: "none",
           backgroundColor: btnColor,
-          color: channel === "jyui" ? "rgb(221, 37, 114)" : "#FFFFFF",
+          color: btnTextColor,
           fontSize: "1rem",
           "&:hover": { backgroundColor: btnColor, mixBlendMode: "hard-light" },
         }}

@@ -21,7 +21,7 @@ def createResponce(status,messsage):
 
 # 音声抽出用サーバーURL
 # VOICE_SERVER = 'https://unidule.net:34449/'
-VOICE_SERVER = 'https://60.39.85.91:34449/'
+VOICE_SERVER = 'https://221.191.130.31:34449/'
 
 ################################################################################################
 # オンプレ側Youtubeダウンロ―ダー呼び出しを非同期化したもの

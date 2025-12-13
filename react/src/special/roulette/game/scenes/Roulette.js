@@ -189,11 +189,7 @@ export class Roulette extends Scene {
 
     // アニメーション等を停止
     this.rouletteState = this.ROULETTE_STATE_NONE;
-
-    
-
   }
-
 
   changeScene() {
     this.scene.start("Game");

@@ -588,8 +588,11 @@ export const VoiceAddForm = ({ reloadFunc, selectVoice, isAdmin }: VoiceAddFormP
             </Typography>
           )}
 
+          <Typography sx={{ fontSize: "0.8rem" }}>現在修正中です(すみません)</Typography>
           <Typography sx={{ fontSize: "0.8rem" }}>アーカイブから音声を直接取得します</Typography>
           <Typography sx={{ fontSize: "0.8rem" }}>音声の取得にはたまに5分くらいかかります</Typography>
+          <Typography sx={{ fontSize: "0.8rem" }}>ログに 500 という数字が見えた場合はサーバー内でエラーが起こっています</Typography>
+
         </Box>
 
         <FormGroup>

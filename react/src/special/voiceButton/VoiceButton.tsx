@@ -273,21 +273,24 @@ function VoiceButton() {
           return x == v.key;
         });
 
-        const i = structuredClone(item[0]);
-        // 検索文字列を含むか
-        i.value = i.value
-          .filter((vv: any) => {
-            if (searchText.length == 0) {
-              return true;
-            }
-            return searchText.map((item) => item.title).includes(vv.title);
-          })
-          .filter((vv: any) => {
-            if (myVoiceButtonDisp == false) return true;
+        if(item.length !== 0){
+          const i = structuredClone(item[0]);
+          // 検索文字列を含むか
+          i.value = i.value
+            .filter((vv: any) => {
+              if (searchText.length == 0) {
+                return true;
+              }
+              return searchText.map((item) => item.title).includes(vv.title);
+            })
+            .filter((vv: any) => {
+              if (myVoiceButtonDisp == false) return true;
 
-            return myVoiceButtonDisp && vv.user_id == user?.userId;
-          });
-        dic.push(i);
+              return myVoiceButtonDisp && vv.user_id == user?.userId;
+            });
+          dic.push(i);
+        }
+
       });
       return dic;
     }

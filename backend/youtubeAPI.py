@@ -55,6 +55,9 @@ def get_video_ids(video_id_list, youtube):
 def get_video_id_in_playlist(playlistId, youtube, isOnce):
     video_id_list = []
 
+    if(playlistId == ''):
+        return []
+
     request = youtube.playlistItems().list(
         part="snippet",
         maxResults=50,
@@ -145,6 +148,6 @@ def get_chat_list(youtube, chat_id):
         return chat_list
 
     except Exception as e:
-        print('get_video_id_in_playlist エラー')
+        print('get_chat_list エラー')
         print(e)      
 

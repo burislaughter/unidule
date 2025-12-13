@@ -91,9 +91,8 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
 
     // デビュー日から経過日数
     const dd_ymd = getDebutYMDAdd(item.channel, today,0);
-    const diffDayDDYMD = differenceInDays(today, dd_ymd);
-
-
+    // デビュー日を1日とするために+1
+    const diffDayDDYMD = differenceInDays(today, dd_ymd) +1;
 
     // テーブル1行
     rows[idx] = (
@@ -141,18 +140,15 @@ export const Summary = ({ channelInfo }: SummaryProps) => {
 
         {/* デビュー日から */}
         <TableCell align="right">
-          {diffDayDDYMD == 0 && (
+          {diffDayDDYMD == 1 && (
             <Typography variant="h6" className="gradation">
               TODAY
             </Typography>
           )}
-          {diffDayDDYMD != 0 && <Typography variant="h6">{diffDayDDYMD}日</Typography>}
+          {diffDayDDYMD != 1 && <Typography variant="h6">{diffDayDDYMD}日</Typography>}
 
           <Typography variant="caption">({format(dd_ymd, "yyyy年M月d日")})</Typography>
         </TableCell>
-
-
-
 
       </TableRow>
     );

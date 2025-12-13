@@ -29,8 +29,16 @@ export const channelParams: UniMen = {
   hoguno: { uid: "UCJWTT5HZQbrkP1NUBwwVEbQ", name: "望月 ほぐの", twitter: "Hoguno_M", order: 10, type: "member", birthday: "09/06", debut: "2024/11/30" },
   konn: { uid: "UCaSJgx9BZRktT0s19henMGg", name: "坂本 こん", twitter: "Sakamoto_kon", order: 11, type: "member", birthday: "01/31", debut: "2024/11/30" },
 
-  uniraid: { uid: "UCKofJjNEmQ3LwERp3pRVxtw", name: "ゆにれいど！", twitter: "Uniraid_VTuber", order: 12, type: "staff", birthday: "", debut: "" },
-  uniraid_cut: { uid: "UCohnUVLcGInaC0l-2A95I5A", name: "公式 切り抜き", twitter: "", order: 13, type: "staff", birthday: "", debut: "" },
+  // LIEMEL
+  compsaurus: { uid: "UCkYQc5CYxYyyMrn0i-uQyXw", name: "コンプ サウルス", twitter: "Compsaurus_Rex", order: 12, type: "member", birthday: "07/24", debut: "2025/08/29" },
+  renma: { uid: "UC_mXkuKyIkO1hYjSeMvbt5g", name: "火狩夜 れんま", twitter: "renma_1", order: 13, type: "member", birthday: "04/09", debut: "2025/08/29" },
+  shiu: { uid: "UCOnPtWuGIz0kTNGcb9FR8xQ", name: "時羽 しう", twitter: "shiu_tokiha", order: 14, type: "member", birthday: "06/10", debut: "2025/08/29" },
+  raichi: { uid: "UCsabgMZxnsDwYzCe9vcQbNw", name: "鳴子 ライチ", twitter: "Naruko_Raichi", order: 15, type: "member", birthday: "05/04", debut: "2025/08/30" },
+  lunathia: { uid: "UCUAy59_4jUN0WGB5gLY8LBg", name: "聖 ルナティア", twitter: "sei_lunathia", order: 16, type: "member", birthday: "02/09", debut: "2025/08/30" },
+  granite: { uid: "UC1_HUmjQShLtT_MuZjry3hQ", name: "グラニット", twitter: "Graniteaaaaa", order: 17, type: "member", birthday: "10/31", debut: "2025/08/30" },
+
+  uniraid: { uid: "UCKofJjNEmQ3LwERp3pRVxtw", name: "ゆにれいど！", twitter: "Uniraid_VTuber", order: 18, type: "staff", birthday: "", debut: "" },
+  uniraid_cut: { uid: "UCohnUVLcGInaC0l-2A95I5A", name: "公式 切り抜き", twitter: "", order: 19, type: "staff", birthday: "", debut: "" },
   other: { uid: "", name: "外部コラボ", twitter: "", order: 14, type: "ohter", birthday: "", debut: "" },
 };
 export const isMember = (channel: string): boolean => {
@@ -75,24 +83,33 @@ export type UniColors = Record<
     bg_color: string;
     btn_color: string;
     btn_color_dark: string;
+    btn_text_color : string;
   }
 >;
 
 const GRAY = "rgb(186, 186, 186)";
 export const uniColors: UniColors = {
-  nanase: { bg_color: "rgb(181,190,254,0.2)", btn_color: "rgb(181,190,254)", btn_color_dark: GRAY }, // #b5befe
-  nagisa: { bg_color: "rgb(119,168,226,0.2)", btn_color: "rgb(119,168,226)", btn_color_dark: GRAY }, // #77A8E2
-  maru: { bg_color: "rgb(254,93,96,0.2)", btn_color: "rgb(254,93,96)", btn_color_dark: GRAY }, // #fe5d60
-  ran: { bg_color: "rgb(112,5,2,0.2)", btn_color: "rgb(112,5,2)", btn_color_dark: GRAY }, // #700502
-  roman: { bg_color: "rgb(76,215,252,0.2)", btn_color: "rgb(76,215,252)", btn_color_dark: GRAY }, // #4cd7fc
-  ida: { bg_color: "rgb(255,84,0,0.2)", btn_color: "rgb(255,84,0)", btn_color_dark: GRAY }, // #FF5400
+  nanase: { bg_color: "rgba(181,190,254,0.2)", btn_color: "rgb(181,190,254)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" }, // #b5befe
+  nagisa: { bg_color: "rgba(119,168,226,0.2)", btn_color: "rgb(119,168,226)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" }, // #77A8E2
+  maru: { bg_color: "rgba(254,93,96,0.2)", btn_color: "rgb(254,93,96)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" }, // #fe5d60
+  ran: { bg_color: "rgba(112,5,2,0.2)", btn_color: "rgb(112,5,2)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" }, // #700502
+  roman: { bg_color: "rgba(76,215,252,0.2)", btn_color: "rgb(76,215,252)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" }, // #4cd7fc
+  ida: { bg_color: "rgba(255,84,0,0.2)", btn_color: "rgb(255,84,0)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" }, // #FF5400
 
-  rabi: { bg_color: "rgb(246,200,43,0.2)", btn_color: "rgb(246,200,43)", btn_color_dark: GRAY },
-  souta: { bg_color: "rgb(33,96,213,0.2)", btn_color: "rgb(33,96,213)", btn_color_dark: GRAY },
-  jyui: { bg_color: "rgb(248,205,223,0.2)", btn_color: "rgb(248,205,223)", btn_color_dark: GRAY },
-  asuto: { bg_color: "rgb(175,209,201,0.2)", btn_color: "rgb(124,200,190)", btn_color_dark: GRAY },
-  hoguno: { bg_color: "rgb(75,90,169,0.2)", btn_color: "rgb(75,90,169)", btn_color_dark: GRAY },
-  konn: { bg_color: "rgb(252,84,2,0.2)", btn_color: "rgb(252,84,2)", btn_color_dark: GRAY },
+  rabi: { bg_color: "rgba(246,200,43,0.2)", btn_color: "rgb(246,200,43)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" },
+  souta: { bg_color: "rgba(33,96,213,0.2)", btn_color: "rgb(33,96,213)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" },
+  jyui: { bg_color: "rgba(248,205,223,0.2)", btn_color: "rgb(248,205,223)", btn_color_dark: GRAY, btn_text_color:"rgb(221, 37, 114)" },
+  asuto: { bg_color: "rgba(175,209,201,0.2)", btn_color: "rgb(124,200,190)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" },
+  hoguno: { bg_color: "rgba(75,90,169,0.2)", btn_color: "rgb(75,90,169)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" },
+  konn: { bg_color: "rgba(252,84,2,0.2)", btn_color: "rgb(252,84,2)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" },
+  
+  compsaurus: { bg_color: "rgba(162, 156, 168, 0.2)", btn_color: "rgb(162, 156, 168)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" },  // #A29CA8
+  renma: { bg_color: "rgba(173, 0, 49, 0.2)", btn_color: "rgba(173, 0, 49, 1)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" },         // #AD0031
+  shiu: { bg_color: "rgba(255, 183, 209, 0.2)", btn_color: "rgb(255, 183, 209)", btn_color_dark: GRAY, btn_text_color:"rgba(32, 129, 172, 1)" },   // #FF93DF / #87E6FE
+  raichi: { bg_color: "rgba(255, 255, 0, 0.2)", btn_color: "rgb(255, 255, 0)", btn_color_dark: GRAY, btn_text_color:"rgba(48, 48, 48, 1)" },          // #FFFF00
+  lunathia: { bg_color: "rgba(46, 37, 68, 0.2)", btn_color: "rgb(46, 37, 68)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" },          // #2E2544 / #FFFFFF
+  granite: { bg_color: "rgba(115, 16, 189, 0.2)", btn_color: "rgb(115, 16, 189)", btn_color_dark: GRAY, btn_text_color:"rgb(255,255,255)" },       // #7310BD
+
 };
 
 
@@ -102,7 +119,7 @@ export const getUniBgColor = (channel: string): string => {
   return cid.bg_color;
 };
 
-// ボタンのカラーコードを取得
+// ボタンの背景のカラーコードを取得
 export const getUniBtnColor = (channel: string): string => {
   const cid = uniColors[channel];
   return cid.btn_color;
@@ -113,6 +130,13 @@ export const getUniDarkColor = (channel: string): string => {
   const cid = uniColors[channel];
   return cid.btn_color_dark;
 };
+
+// ボタンのテキストのカラーコードを取得
+export const getUniBtnTxtColor = (channel: string): string => {
+  const cid = uniColors[channel];
+  return cid.btn_text_color;
+};
+
 
 export const range = (start: number, end: number) => Array.from({ length: end - start + 1 }, (v, k) => k + start);
 

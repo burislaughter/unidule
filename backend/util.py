@@ -19,6 +19,7 @@ PATH_PARAMETER_GET_CHAT = '/chat'
 PATH_PARAMETER_SEARCH_CHAT = '/chat_search'
 PATH_PARAMETER_VOICE_TIMELINE = '/voice_timeline'
 PATH_PARAMETER_GET_CHAT_MESSAGE = '/chat_message'
+PATH_PARAMETER_KEEP_ALIVE = '/keep_alive'
 
 # チャンネル情報の定数
 # チャンネルオーナー、チャンネルID、新着動画プレイリストID
@@ -39,8 +40,16 @@ channelParams = [
     ('hoguno','UCJWTT5HZQbrkP1NUBwwVEbQ','UUJWTT5HZQbrkP1NUBwwVEbQ','UUMOJWTT5HZQbrkP1NUBwwVEbQ'),
     ('konn','UCaSJgx9BZRktT0s19henMGg','UUaSJgx9BZRktT0s19henMGg','UUMOaSJgx9BZRktT0s19henMGg'),
 
-    ('uniraid','UCKofJjNEmQ3LwERp3pRVxtw','UUKofJjNEmQ3LwERp3pRVxtw','UUMOKofJjNEmQ3LwERp3pRVxtw'),
-    ('uniraid_cut','UCohnUVLcGInaC0l-2A95I5A','UUohnUVLcGInaC0l-2A95I5A','UUMOohnUVLcGInaC0l-2A95I5A'),
+    # LIEMEL
+    ('compsaurus','UCkYQc5CYxYyyMrn0i-uQyXw','UUkYQc5CYxYyyMrn0i-uQyXw','UUMOkYQc5CYxYyyMrn0i-uQyXw'),
+    ('renma',     'UC_mXkuKyIkO1hYjSeMvbt5g','UU_mXkuKyIkO1hYjSeMvbt5g',''),  # UUMO_mXkuKyIkO1hYjSeMvbt5g メン限
+    ('shiu',      'UCOnPtWuGIz0kTNGcb9FR8xQ','UUOnPtWuGIz0kTNGcb9FR8xQ',''),  # UUMOOnPtWuGIz0kTNGcb9FR8xQ 
+    ('raichi',    'UCsabgMZxnsDwYzCe9vcQbNw','UUsabgMZxnsDwYzCe9vcQbNw',''),  # UUMOsabgMZxnsDwYzCe9vcQbNw 
+    ('lunathia',  'UCUAy59_4jUN0WGB5gLY8LBg','UUUAy59_4jUN0WGB5gLY8LBg',''),  # UUMOUAy59_4jUN0WGB5gLY8LBg 
+    ('granite',   'UC1_HUmjQShLtT_MuZjry3hQ','UU1_HUmjQShLtT_MuZjry3hQ',''),  # UUMO1_HUmjQShLtT_MuZjry3hQ 
+
+    ('uniraid','UCKofJjNEmQ3LwERp3pRVxtw','UUKofJjNEmQ3LwERp3pRVxtw',    ''),  # UUMOKofJjNEmQ3LwERp3pRVxtw
+    ('uniraid_cut','UCohnUVLcGInaC0l-2A95I5A','UUohnUVLcGInaC0l-2A95I5A',''),  # UUMOohnUVLcGInaC0l-2A95I5A
 
     ('other','','','')  # その他の他枠の動画情報のみを持つ物
 

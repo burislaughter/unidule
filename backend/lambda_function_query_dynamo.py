@@ -18,7 +18,7 @@ import json
 
 import urllib
 from lambda_function_update_dynamo import importVideoListDocument
-from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE, PATH_PARAMETER_RAW_VOICE, PATH_PARAMETER_RAW_VOICE_POOL, PATH_PARAMETER_WAV_TO_MP3, PATH_PARAMETER_GET_CHAT, PATH_PARAMETER_SEARCH_CHAT,PATH_PARAMETER_VOICE_TIMELINE, PATH_PARAMETER_GET_CHAT_MESSAGE, PATH_PARAMETER_VIDEO_LIST_BETWEEN
+from util import PATH_PARAMETER_AUTH, PATH_PARAMETER_CHANNEL_INFO, PATH_PARAMETER_INFORMATION, PATH_PARAMETER_SCHEDULE_TWEET, PATH_PARAMETER_SYSTEM, PATH_PARAMETER_VIDEO, PATH_PARAMETER_VIDEO_FORCE_UPDATE,PATH_PARAMETER_VIDEO_LIST, PATH_PARAMETER_VOICE, PATH_PARAMETER_RAW_VOICE, PATH_PARAMETER_RAW_VOICE_POOL, PATH_PARAMETER_WAV_TO_MP3, PATH_PARAMETER_GET_CHAT, PATH_PARAMETER_SEARCH_CHAT,PATH_PARAMETER_VOICE_TIMELINE, PATH_PARAMETER_GET_CHAT_MESSAGE, PATH_PARAMETER_VIDEO_LIST_BETWEEN, PATH_PARAMETER_KEEP_ALIVE
 from util import decimal_default_proc
 from util import splite_time
 
@@ -28,13 +28,14 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 import pandas as pd
 import pytchat
 
 
 # 音声抽出用サーバーURL
 # VOICE_SERVER = 'https://unidule.net:34449/'
-VOICE_SERVER = 'https://60.39.85.91:34449/'
+VOICE_SERVER = 'https://221.191.130.31:34449/'
 
 
 
@@ -641,7 +642,7 @@ def importItem(item, table):
         table.put_item(Item=item)
 
     except Exception as e:
-        print('dynamodb import エラー')
+        print('dynamodb import エラー: ' + item)
         print(e)
 
 ################################################################################################
@@ -782,7 +783,11 @@ def lambda_handler(event, context):
     # UPDATE_VIDEO_LIST  ... DynamoDB更新
     # GET_VIDEO_LIST ... DynamoDBから取得
 
-    if pathParam == PATH_PARAMETER_VIDEO_LIST:    # チャンネルの動画リストを取得
+    if pathParam == PATH_PARAMETER_KEEP_ALIVE:    # Lambda維持
+
+        return createResponce(200,json.dumps({}, default=decimal_default_proc, ensure_ascii=False))
+
+    elif pathParam == PATH_PARAMETER_VIDEO_LIST:    # チャンネルの動画リストを取得
         # https://api.unidule.jp/prd/video_list?channel=maru
 
         # maru ... 花ノ木まる
@@ -938,7 +943,8 @@ def lambda_handler(event, context):
             
         query = event['queryStringParameters']
 
-        target_dt = datetime.strptime(query['target_at'], "%Y-%m-%dT%H:%M:%S%z") if ('target_at' in query) else datetime.now(timezone.utc)
+        # JSTの時差分足す
+        target_dt = datetime.strptime(query['target_at'], "%Y-%m-%dT%H:%M:%S%z") if ('target_at' in query) else datetime.now(timezone.utc) + timedelta(hours=9)
 
         start_at = math.floor((target_dt + timedelta(days=-8)).timestamp())
         end_at = math.floor((target_dt).timestamp())
